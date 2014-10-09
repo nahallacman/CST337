@@ -1,0 +1,720 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!-- saved from url=(0054)http://www.cset.oit.edu/~lynnd/cst337/Introlab_f14.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    
+    <title>Introductory Lab</title>
+    <meta content="D.W. Lynn" name="author">
+  </head>
+  <body>
+    <h3 style="text-align: center;">CST 321/337 Lab 1 -- Introduction to
+      C on the PIC32MX<br>
+    </h3>
+    During this lab we will will look at some introductory concepts
+    related to using C to program at lower levels. We are only going to
+    do some basic programming in terms of simply flashing LEDs using
+    polled timing, but we can use this to introduce using C on the
+    PIC32MX and some ideas relating to how C statements relate to the
+    machine code and how this can affect performance.<br>
+    <br>
+    We will begin by writing a simple program to turn one (or several)
+    of the LEDs on and off. The PIC32 Starter kit has LEDs at RD0, RD1
+    and RD2. The AV32 Companion board, in which the starter kit is
+    mounted, also has two more LEDs -- at RB9 and RB8 on version 1.4(B
+    and C) <u>or</u> at RB4 and RB5 on version 1.5. <br>
+    <span style="font-weight: bold;"><br>
+      The Lab<br>
+      <br>
+    </span>1) See the MPLab setup notes section below for a refresher on
+    setting up the MPLab software and bringing up the source editor.<br>
+    <br>
+    2) Change the "#include &lt;p32xxxx.h&gt;" statement to "#include
+    &lt;xc.h&gt;" statement to the file. (Note that you could leave the
+    include as p32xxxx.h as it mainly just includes xc.h itself.) Based
+    on the device we selected in the project wizard, this include file
+    will select the appropriate include file to provide names for the
+    various processor resources. In our case this is C:\Program
+    Files\Microchip\xc32 \v1.32\pic32-libs\include\proc\p32mx360f512l.h
+    .&nbsp; (In the future, Microchip may add a "new file" category for
+    the XC32 compiler that adds the xc.h include automatically.)<br>
+    <br>
+    3) Open p32mx360f512l.h with an appropriate editor (i.e. notepad++)
+    but <span style="font-weight: bold;">be careful not to make or save
+      any changes!</span> Search for PORTD. Note how it is defined as an
+    "extern volatile unsigned int". The "extern" means its address is
+    defined elsewhere (in the sfrs section). The "volatile" means that
+    the contents of the SFR may be changed in ways the compiler cannot
+    be aware of (which is appropriate for sfrs since they are attached
+    to I/O devices). Assuming the include file is accurate, the resource
+    names defined here should be the same as those used in the Family
+    Reference Manual and Datasheets. Note how a typedef of a union of
+    two bit field structs is defined for PORTDbits. Thus, PORTDbits.RD0
+    can be used to reference bit 0 of port D and PORTDbits.w can refer
+    to all 32 bits -- as can PORTD alone. Also note how similar
+    definitions are provided for LATD and TRISD and how definitions are
+    provided for PORTDSET, PORTDCLR and PORTDINV and the set clear and
+    invert addresses for TRISD and LATD etc. <br>
+    Note that many of the peripherals, including PORTD, are actually 16
+    bit devices (to be backward/hardware compatible with earlier 16 bit
+    PICS) but they are still defined as 32bit ints. There is no issue
+    with this on this processor since all device addresses are aligned
+    to 32 bit addresses and with a 32 bit bus, there is no loss of
+    performance in writing or reading&nbsp; an aligned 32 bit value as
+    opposed to a 16 bit value. (We will talk more about alignment later
+    on in lecture.)<br>
+    (By the way, while bitfields are appropriately defined in
+    p32mx360f512l.h, such definitions should generally be avoided in
+    your own code. The order of bitfields (LSB first or MSB first) is
+    hardware dependent, so code with bitfields in it is not portable.
+    p32mx360f512l.h is obviously used for specific hardware and so, by
+    definition it is not intended to be portable!)<br>
+    <br>
+    4) Search further down p32mx360f512l.h for .extern PORTD. This
+    statement is further needed by the linker to resolve the external
+    address for PORTD. Note how its address is shown using a comment.
+    Note that this <span style="text-decoration: underline;">does not</span>
+    define the address, it is just there for our convenience. The
+    address assignment is actually done in an object file
+    (...\xc32\v1.32\pic32mx\lib\proc\32mx360f512l\processor.o) for which
+    we don't have the source code. The ultimate authority for SFR
+    addresses is the Datasheet.<br>
+    <br>
+    5) Though I'm fairly sure all SFRs have already been given symbolic
+    names, assume that one wasn't defined, or that it was defined
+    wrongly. How could we access it? (Also, other processor's
+    development environments may not provide these resources.) Consider
+    the following approaches to defining and referencing myportD --<br>
+    <div style="margin-left: 40px;">a)<br>
+      <div style="margin-left: 40px; font-family: monospace;">volatile
+        unsigned int * myportD;<br>
+        <br>
+        myportD = 0xBF8860D0; /* setting up the address */<br>
+        *myportD |= 1;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; /*
+        referencing PORTD */<br>
+      </div>
+      <br>
+      b)<br>
+      <div style="margin-left: 40px;"><span style="font-family:
+          monospace;">#define myportD (* (volatile unsigned int *)
+          0xBF8860D0)</span><br style="font-family: monospace;">
+        <br style="font-family: monospace;">
+        <span style="font-family: monospace;">myportD |= 1;</span><br>
+      </div>
+    </div>
+    <br>
+    Note how the second approach should result in less code and storage
+    space than the first approach, though both may ultimately end up
+    generating the same amount of code, <span style="text-decoration:
+      underline;">if</span> compiler optimization is available and
+    turned on.<br>
+    <br>
+    6) Search down further in p32mx360f512l.h for _PORTD_RD0_MASK and
+    note how mask positions and lengths are defined for all the PORT
+    bits.<br>
+    <br>
+    7) Finish writing the program to toggle an LED bit. First, use
+    statements like PORTD |= 1 and PORTD &amp;= ~1 to toggle the LED
+    (assuming we want to toggle the LED on RD0). Structure your program
+    to toggle the LEDs in an infinite while loop. We will test it by
+    using the simulator and a watch on the port (or ports) containing
+    the LEDS.<br>
+    Note that you want to structure your code so that only the port pins
+    connected to the LEDs are configured for output (remember TRIS?).
+    You don't want to inadvertently configure a port pin for output that
+    is already connected to the output of another device, creating a
+    conflict and potentially damaging either the other device or the
+    PIC32. <br>
+    Also note that PORTB defaults to analog inputs for the A/D
+    converter. To use these pins for LEDS (if you want to use PORTB
+    LEDs) you will need to configure the pins for digital I/O using the
+    AD1PFCG sfr. (See section 17 of the Family Reference Manual.)<br>
+    <br>
+    8) Select the <span style="font-weight: bold;">Simulator</span>
+    tool from the Hardware tools pane in the Project Properties window
+    (File &gt; Project Properties or Right click on the project name in
+    the Project window and select Properties or the wrench button in the
+    Dashboard). Next, compile and debug your code (Debug Project icon).
+    Note that first setting the "Debug Startup" option to "Main" as
+    described below will cause the Debug Project Icon to stop execution
+    at the first instruction in main rather than proceeding directly to
+    running (simulating in this case) your code. If you didn't do this,
+    then your code is now running (simulating). If this is the case,
+    clicking the pause button will stop your code and highlight the line
+    in your code that will be executed next (assuming it hasn't already
+    exited). The Reset (Reset Icon) will (by default) reset device to
+    the beginning of main.<br>
+    <br>
+    9) Note (as illustrated in the output window) that during the build,
+    all .c files added to the project are compiled to object (.o) files
+    using xc32-gcc. Then xc32-gcc is used to link all the object files
+    just created and any that were added to the project directly (these
+    would appear in the object files list of the Project window). It
+    also searches libraries for any library routines that were used in
+    the project. Both libraries explicitly added to the project (Library
+    Files in the Project window) and standard libraries (see the gcc
+    command line in the output window) are linked. The linker is guided
+    by the default linker script
+    "...\xc32\v1.32\pic32mx\lib\proc\32mx360f512l\procdefs.ld". This
+    file contains the reference to processor.o that contains the sfr
+    address definitions as well as memory region (i.e. Flash and SRAM)
+    sizes and interrupt and exception vector addresses. Should we need
+    to provide additional instructions to the linker this can be done
+    through a .ld file added to the project (in the Linker Files section
+    of the Project window). Finally a binary format file (.elf) is
+    produced and loaded. <br>
+    <br>
+    10) Open the Watch window (Window &gt; Debugging &gt; Watches) and
+    right click in the window to add a new watch or do Debug &gt; New
+    Watch) and add the PORTD SFR. Single step through the LED set and
+    clear statements to verify that the bit(s) are being properly set
+    and cleared. Note that you can also right click on a variable or SFR
+    reference in your code and select "New Watch".<br>
+    <br>
+    11) Open the disassembly window (Window &gt; Debugging &gt;
+    Disassembly) and observe the code that was generated for the LED set
+    and clear statements. Record this for the next step. Also note how
+    "Step Into" stepping when the source window is highlighted steps C
+    instruction lines, while "Step Into" stepping while the disassembly
+    window is highlighted steps assembly level instructions. "Step Over"
+    stepping while the disassembly window is highlighted steps C
+    instruction lines. Observe how the set statement was implemented in
+    the disassembly and record this for your report. (Window &gt; PIC
+    Memory Views &gt; Execution Memory also shows the encoding of the
+    instructions which can sometimes be helpful.)<br>
+    <br>
+    12) Change the LED set statement to one that looks like
+    PORTDbits.RD0 = 1 and the LED clear statement to one that looks like
+    PORTDbits.RD0 = 0. Then rebuild and debug your code (to make sure it
+    works). Observe how the set statement was implemented in the
+    disassembly and record it for your report. Is the implementation
+    substantially different than what you saw in step 11? How does it
+    differ? How many instructions are used and how many time is an SFR
+    referenced in each case? Record this for your report. <br>
+    <span style="font-weight: bold;">Make sure that you always stop the
+      debugger before making code changes and running a new debug
+      session, or you may end up getting bad results!</span> Note that
+    you will have to re-open the disassembly window since the debugger
+    stop will close it. This is to make sure the disassembly stays in
+    sync with the source. You should usually never have more than one
+    "(Build, Load, ...)" output window.<br>
+    <br>
+    13) Change the LED set statement to one that looks like PORTDSET = 1
+    debug your code (to make sure it works). Observe how the set
+    statement was implemented in the disassembly and record it for your
+    report. Is the implementation different than what you saw in steps
+    11 and 12? What are the differences and why? How many instructions
+    are used and how many times is an SFR referenced in this case?&nbsp;<span style="color: rgb(255, 0, 0);"> </span>Record this for your
+    report. Note that PORTDINV=1 can be used to perform both the set and
+    clear functions.<br>
+    <br>
+    14) Now add a delay based on polling Timer2 to your infinite loop to
+    allow the LED to be on and off for 1/4 second. Assume a 72MHZ system
+    clock and a 36MHZ peripheral bus clock. Refer to the PIC32 Family
+    Reference manual (Section 14) as needed to set up Timer2. Note that
+    Timer2 is a type B timer. Configure it for 16 bit ungated operation.
+    Note that microchip recommends turning off the timer by setting the
+    TON bit in T2CON to 0, then setting the initial values of TMR2, PR2
+    and other bits in T2CON as needed, then setting TON to start the
+    timer.<br>
+    <br>
+    15) Note that if you attempt to simulate the adjusted code with a
+    1/4 second delay in it, single stepping is out of the question. Even
+    setting a breakpoint after the delay loop and running to that point
+    will take a very long time since the simulator does not run in real
+    time. Temporarily reduce the delay, and use a breakpoint to make
+    sure your modified code is reaching the LED toggle statement(s).<br>
+    (Breakpoints can be set by single clicking on the line number to the
+    right of the line where you want to set the breakpoint.)<br>
+    <span style="color: rgb(255, 0, 0);"></span><br>
+    16) How do we check, using the simulator, that our delays are
+    correct? Open the StopWatch tab (Window &gt; Debugging &gt;
+    StopWatch). The stopwatch records the number of system cycles
+    between breakpoints. Run to the breakpoint a couple of times. What
+    is the default simulated system clock frequency? This value can be
+    changed in the debugger settings window (Project Properties &gt;
+    Simulator &gt; Oscillator Options) but only after stopping the Debug
+    session. Run one pass of the loop (LED toggle to LED toggle) and
+    determine the time of the delay in cycles -- record the stopwatch
+    value (in cycles) and the simulated processor frequency. Using this
+    information, determine what the simulator's default clock division
+    is for the Peripheral Bus Clock (PBCLK). Record&nbsp; your data,
+    work and your answer to this question for your report. (That is,
+    show your work in your report). Also report what delay, in TMR2
+    clocks, you were attempting to implement at this point. <br>
+    <br>
+    17) Before we run the code in actual hardware, we have to be careful
+    to take care of the system and peripheral bus clocks. The following
+    table shows the setup needed for a 72MHz system clock and 36MHz
+    peripheral clock. The Configuration bits registers are stored in the
+    boot flash of the PIC32. These registers are read during reset to
+    determine the initial settings of the clock oscillators (and other
+    things). <br>
+    To set the system clock for 72MHz operation we select the 8MHz
+    external crystal (XT osc mode for Primary Oscillator and Primary Osc
+    w/PLL (XT+/etc) for Oscillator Selection, divide this down to 4 MHz
+    for the PLL (PLL Input divider set to 2x Divider), multiply the 4MHz
+    PLL input by 18 to get a 72MHz system clock out of the PLL (18x PLL
+    Multiplier) and finally get the 72MHZ system clock by not dividing
+    the PLL output (System PLL Output Clock divider set to 1). Setting
+    the Peripheral Clock divisor to 2 gives us the 36 MHz PBCLK. <br>
+    <span style="font-weight: bold;"><br>
+    </span>
+    <table style="text-align: left;" border="1" cellpadding="2" cellspacing="0">
+      <tbody>
+        <tr>
+          <td colspan="4" rowspan="1" style="vertical-align: top;">Configuration
+
+
+
+
+
+
+
+
+
+            Register Bits Settings<br>
+          </td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>Register<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Field<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Category<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Setting<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td colspan="1" rowspan="3" style="vertical-align: top;"><small>DEVCFG2<br>
+            </small><small><br>
+            </small><small><br>
+            </small></td>
+          <td style="vertical-align: top;"><small>FPLLIDIV<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>PLL Input Divider<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>2x Divider<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>FPLLMUL<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>PLL Multiplier<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>18x Multiplier<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>FPLLODIV<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>System PLL Output
+              Clock Divider</small></td>
+          <td style="vertical-align: top;"><small>PLL Divide by 1<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td colspan="1" rowspan="9" style="vertical-align: top;"><small>DEVCFG1<br>
+            </small><small><br>
+            </small><small><br>
+            </small><small><br>
+            </small><small><br>
+            </small><small><br>
+            </small><small><br>
+            </small><small><br>
+            </small><small><br>
+            </small></td>
+          <td style="vertical-align: top;"><small>FNOSC<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Oscillator Selection
+              Bits<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Primary Osc w/PLL
+              (XT+,HS+,EC+PLL)<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>FSOSCEN<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Secondary Oscillator
+              Enable<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Disabled<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>IESO<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Internal/External
+              Switchover<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Disabled</small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>POSCMD<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Primary Oscillator
+              Configuration<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>XT Osc mode<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>OSCIOFNC<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>CLKO Output Signal
+              Active on the OSCO Pin<br>
+            </small></td>
+          <td style="vertical-align: top;"><small><span style="color:
+                rgb(255, 0, 0);">Enabled</span><br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>FPBDIV<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Peripheral Clock
+              Divisor<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Pb-Clk is Sys_Clk/2<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>FCKSM<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Clock Switching and
+              Monitor Selection<br>
+            </small></td>
+          <td style="vertical-align: top; color: rgb(255, 0, 0);"><small>Clock
+
+
+
+
+
+
+
+
+
+              Swtich Disable, FSCM Disabled</small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>WDTPS<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Watchdog Timer
+              Postscaler<br>
+            </small></td>
+          <td style="vertical-align: top;"><small><span style="color:
+                rgb(255, 0, 0);">1:1048576</span><br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>FWDTEN<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Watchdog Timer Enable<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>WDT Disabled (SWDTEN
+              Bit Controls)<br>
+            </small></td>
+        </tr>
+        <tr>
+          <td colspan="1" rowspan="5" style="vertical-align: top;"><small>DEVCFG0</small><small><br>
+            </small></td>
+          <td style="vertical-align: top;"><small>DEBUG<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Background Debugger
+              Enable<br>
+            </small></td>
+          <td style="vertical-align: top;"><small><span style="color:
+                rgb(255, 0, 0);">Debugger is Disabled</span><br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>ICESEL<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>ICE/ICD Comm Channel
+              Select<br>
+            </small></td>
+          <td style="vertical-align: top;"><small><span style="color:
+                rgb(255, 0, 0);">ICE EMUC2/EMUD2 pins shared with
+                PGC2/PGD2</span><br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>PWP<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Program Flash Write
+              Protect<br>
+            </small></td>
+          <td style="vertical-align: top;"><small><span style="color:
+                rgb(255, 0, 0);">Disable</span><br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>BWP<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Boot Flash Write
+              Protect<br>
+            </small></td>
+          <td style="vertical-align: top;"><small><span style="color:
+                rgb(255, 0, 0);">Protection Diabled</span><br>
+            </small></td>
+        </tr>
+        <tr>
+          <td style="vertical-align: top;"><small>CP<br>
+            </small></td>
+          <td style="vertical-align: top;"><small>Code Protect<br>
+            </small></td>
+          <td style="vertical-align: top; color: rgb(255, 0, 0);"><small>Protection
+
+
+
+
+
+
+
+
+
+              Disabled</small></td>
+        </tr>
+      </tbody>
+    </table>
+    <span style="font-weight: bold;"></span><span style="color: rgb(51,
+      102, 255);"></span><br>
+    18) The values to program in the configuration registers can be set
+    by #pragmas in the code itself. This is a good idea since clock
+    settings are often integral to a project and not having the clock
+    settings be recorded in the source code can lead to problems down
+    the road. The following settings provide the same settings as noted
+    in part 17 above.<br>
+    <br>
+    <span style="font-family: monospace;">#pragma config POSCMOD=XT,
+      FNOSC=PRIPLL, FPLLIDIV=DIV_2, FPLLMUL=MUL_18, FPLLODIV=DIV_1<br>
+      #pragma config FPBDIV=DIV_2, FWDTEN=OFF, CP=OFF, BWP=OFF</span><br>
+    <span style="font-family: monospace;">#pragma config FSOSCEN=OFF,
+      IESO=OFF</span><br>
+    <br>
+    Note that not all fields need be specified. We only need specify the
+    fields that differ from the default values. In the above table,
+    those settings we change are indicated in black. Those that don't
+    need pragmas because their default value is already okay are shown
+    in red.<br>
+    <br>
+    Add the above pragmas to your code and re-make it.<br>
+    <br>
+    19) The Configurations Bits window (Window &gt; PIC Memory Views
+    &gt; Configuration bits) shows the current configuration bits
+    settings. Open this window and verify that the settings, including
+    the defaults given in the table above are set. Now, re-run the code
+    with the stopwatch as before. Does the simulator appear to take the
+    configurations bits into account or not? How do you know? Also check
+    to see if any changes were made in the oscillator options of the
+    Debugger settings.&nbsp; Record these observations for your report.<br>
+    <br>
+    Note that changes can be made in the configurations bits window, but
+    that this does not automatically make changes to the pragmas in your
+    code. However, the "Generate Source Code to Output" button in this
+    window can create code that you can cut and paste into your source
+    code.<br>
+    <br>
+    <br>
+    20) Before going to actual hardware we will experiment with the
+    Simulator's Logic Analyzer. <br>
+    <ul>
+      <li>Under Project Properties &gt; Conf:Simulator &gt; (Option
+        Category) Trace , select "Instruction Trace" for the Data
+        Collection Selection. Also select Reset Data File on Run. Note:
+        the debugging session needs to be stopped before doing this.<br>
+      </li>
+      <li>Select Window &gt; Simulator &gt; Analyzer</li>
+      <li>Click the "Edit pin channel definitions" button (it uses a
+        chip icon). In the "Add/Remove Pins" window that opens, select
+        the port output pin that you are toggling, and add it to the
+        Selected Pins list. Then click OK.</li>
+      <li>Remove any breakpoints from your code and run then halt the
+        simulation after a pause (long enough to have the LED toggle
+        several times).</li>
+      <li>The Logic Analyzer window should show a square wave. <br>
+      </li>
+      <li>Note that You may need to adjust you delay amount and/or the
+        trace buffer size (File &gt; Project Properties &gt;
+        Conf:Simulator &gt; Trace) in order to see the square wave.<br>
+      </li>
+    </ul>
+    <span style="font-weight: bold;">Show the result to the professor.</span><br>
+    <span style="color: rgb(255, 0, 0);"><br>
+    </span>21) Make sure the configuration bits are set as indicated in
+    part 18. Connect up the Real ICE emulator and the target hardware
+    following instructions given by the professor. <span style="font-weight: bold;">Remember to always power up the ICE
+      before the target hardware (and when shutting down to turn off the
+      target hardware before turning off the ICE)</span>. Select the
+    Real ICE as the debugger hardware. Reset your timer delay to the
+    right value. Re build your project and program the target hardware.
+    Reset and run. Observe that the LED(s) toggle as required. Debug as
+    needed. <span style="font-weight: bold;">Demonstrate your running
+      program.</span> Use the Stopwatch to time one iteration of the
+    loop. When Real ICE is the debugger there must be two breakpoints
+    for the stopwatch function. One will start the stopwatch and the
+    other will stop it. Set one breakpoint on the LED Set statement and
+    the other on the LED Clear statement. Using the properties button in
+    the Stopwatch tab, select one breakpoint for the start condition and
+    the other for the stop condition,&nbsp; From the system cycle count,
+    does it appear that there is 1/4 second between LED toggles? Record
+    your results, including any calculations, for your report. Also in
+    your report, explain, as best you can any discrepancies between the
+    value reported to you by the stopwatch and the value you would have
+    expected on the stopwatch. <span style="font-weight: bold;">Note
+      that the Real ICE stopwatch is a 24 bit timer so it may roll over
+      depending on your delay settings</span>. (I'm not sure how many
+    bits are available in the simulator's stopwatch, but it appears to
+    be more than 32.)<br>
+    <br>
+    22) In the breakpoint tab (Window &gt; Debugging &gt; Breakpoints)
+    right click on a breakpoint and select Customize. Then experiment
+    with the "pass count" options. What does this do?&nbsp; Also note
+    that the Debug &gt; New breakpoint dialog (or right click in the
+    Breakpoints Tab) allows you to set breakpoints on Data (data memory
+    accesses) Address (instruction or data reference to an address) or
+    various other system Events. Right clicking on a variable name in
+    the code window also lets you set data breakpoints. Experiment with
+    data breakpoints to see if this works for both global and local
+    variables and for SFRs. Record the results for your report. Observe
+    the disassembly window while running to these breakpoints along with
+    choosing "break on read", "break on write" and "break on read or
+    write" options for them. <br>
+    Note that with local variables you will have to supply the
+    variable's address which you can get by hovering over the variable
+    in the code window, or through the watch window.&nbsp; To get the
+    correct address requires that the variable be "in scope" meaning
+    that you have to be <u>inside</u> the routine that declares it (at
+    least on the first executable line inside "main" in this case). Be
+    careful whenever you re-compile since the variable's address could
+    change but the data breakpoint would have the old address! <font color="#ff0000">Also, do not type anything in the Symbol box in
+      the set breakpoint dialog! This appears to be a bug. This same bug
+      also apples to SFRs. You can use the Symbols button to select an
+      SFR for a data breakpoint and get its address, but then clear the
+      SFR name from symbol box and change the first Hex digit of the
+      address from a 1 to a B.</font><br>
+    Note that you can also set Sequential breakpoints (run till the
+    first breakpoint in a sequence is triggered, then look for the next
+    breakpoint) and Anded breakpoints (break only when a code breakpoint
+    and a data breakpoint are triggered) through the Breakpoints dialog.
+    This is accomplished through right clicking on a breakpoint in the
+    breakpoints tab and selecting "Complex Breakpoint".<span style="color: rgb(255, 0, 0);"><br>
+    </span><br>
+    23) Right Click in the watches tab and add "runtime" watches on TMR2
+    and on a local or global variable that also has a regular watch on
+    it.&nbsp; What is the difference between a regular and a runtime
+    watch? From your observations of the output of the runtime watch for
+    TMR2, how do you think the runtime watch works? Why might this slow
+    down the real-time execution of the target hardware?<br>
+    <br>
+    24) Determine the difference between software and hardware
+    breakpoints. You can use the Real ICE user's guide on the class
+    webpage for information about this. In your report, record how many
+    software and hardware data and instruction breakpoints are available
+    in the PIC32MX under Real ICE. You can find some of this information
+    on the Dashboard under Resources. Software breakpoints can be
+    enabled under Project Properties &gt; Real ICE &gt; Debug Options or
+    with the resources button in the Dashboard. Why, as reported in the
+    Real ICE User's guide, does using software breakpoints impact
+    "device endurance"? Include your answers in your report.<br>
+    <br>
+    25) Power down the target board, then the Real ICE and return to the
+    simulator. The Simulator's Trace function (that was used to do the
+    logic analyzer earlier) is used primarily to allow code execution to
+    be traced. Turn tracing on as described in item 20 above. You might
+    also want to shorten the delay loop. Run one pass of the loop and
+    look at the results in the Trace window. (Note that right clicking
+    on the trace window provides an option to clear the trace buffer).
+    By examining the trace window, determine what each of the SA, SD,
+    S2A, S2D, DA and DD headings in the Trace window mean. Record your
+    answer for the report. Note that the Real ICE can also trace, but
+    extra hardware setup is required to support this.<span style="color:
+      rgb(51, 102, 255);"></span><br>
+    <br>
+    <br>
+    <span style="font-weight: bold;">Report<br>
+    </span><br>
+    A formal report is not required, simply turn in the following items.<span style="font-weight: bold;"><br>
+    </span>
+    <ul>
+      <li>Provide a copy of your final (commented) source code.</li>
+      <li>Provide complete answers to the questions posed in and results
+        from each of parts 11, 12, 13, 16, 19, 22,&nbsp; 23, 24 and 25.</li>
+      <li>Also answer the following questions:<br>
+      </li>
+      <div style="margin-left: 40px;">26) Why doesn't the PORTDSET sfr
+        have bit definitions (say bit0, bit1 etc) in p32mx360f512l.h
+        like PORTD (has RD0, RD1 etc)? In other words, <br>
+        <div style="margin-left: 40px;">a) Why does PORTDSETbits.bit0 =
+          1 not make any sense? <br>
+          b) What is wrong with the statement PORTDSET |= 1? (Hint,
+          check what the Family Reference Manual says will be returned
+          from the PORTxSET/INV/CLR registers). </div>
+      </div>
+      <div style="margin-left: 40px;"> 27) We note that the linker will
+        link your code to the startup code crt.o. This code provides
+        some system initialization related to (among other things)
+        setting up the interrupt environment along with setting initial
+        values for variables.&nbsp; You may not want to have your code
+        be linked to crt.o, in which case you would provide your own
+        system initialization and initialization for variables. This is
+        known as runtime initialization. Why do variables in an embedded
+        system need to be initialized at "runtime"? Note that general
+        purpose systems (i.e. PCs) rely on "load time" initialization
+        for variables. "Load time" is when the program (including code
+        and initialized data) is loaded from disk into RAM.
+        <ul>
+        </ul>
+      </div>
+    </ul>
+    <br>
+    <span style="font-weight: bold;">MPLAB setup notes:</span><br>
+    <ul>
+      <li>Open MPLABX<br>
+      </li>
+      <li>Launch a new project from the File menu or from the start page<br>
+      </li>
+      <ul>
+        <li>In step 1, select&nbsp; "Standalone Project" from the
+          "Microchip Embedded" category.<br>
+        </li>
+        <li>In step 2, select the PIC32MX360F512L device from the 32-bit
+          MCUs (PIC32) family.</li>
+        <li>In step 3, select the Real ICE development tool.</li>
+        <li>In step 5, (4 is automatically skipped) keep the default (no
+          optional plugin board&nbsp; selected).<br>
+        </li>
+        <li>In step 6, select (highlight) the XC32 compiler toolchain:X
+          C32 (v1.32) [C:\Program Files\Microchip\xc32\v1.32\bin]<span style="font-weight: bold;"></span><br>
+        </li>
+        <li>In step 7, select a project name and browse to create a new
+          folder on your Z drive. Check the "set as main project" box.
+          Note that you can create a folder on the C drive, and project
+          building might be faster if you do, but that anything stored
+          on the C drive will be lost at the end of the day (or if the
+          machine must be rebooted). So, if you use the C drive you will
+          have to copy files to and from your Z drive (or another
+          storage device) each time you use the lab.</li>
+      </ul>
+      <li>Create a new C source file by using CTRL+N, or File &gt; New.
+        Then, in step 1, choose the "main.c" file type from the
+        "Microchip Embedded &gt; C32 Compiler"category. In step 2 choose
+        an appropriate file name. You likely won't need to select a new
+        folder. Make sure to use a ".c" extension. This should create a
+        c source file with a header comment, an #include
+        &lt;p32xxxx.h&gt; statement and an empty main prototype. It
+        should also add the file as a source file in your project, check
+        this in the Projects window (Window &gt; Projects).<br>
+      </li>
+      <li>I recommend setting the "Debug Startup" option under Tools
+        &gt; Options &gt; Embedded &gt; Generic Settings to "Main".
+        Otherwise the debugger will start you code in run mode.
+        Alternately you can make sure to set an appropriate breakpoint
+        before starting the debugger. You might also set "Reset" to Main
+        as well.<br>
+      </li>
+    </ul>
+    <br>
+    <br>
+  
+
+</body></html>
