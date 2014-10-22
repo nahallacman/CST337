@@ -40,6 +40,7 @@
 //#include <FOURIER.h>
 //#include <FFTMISC.c>
 #include <math.h>
+#include <plib.h>
 
 #define M_PI 3.14159265358979323846 // approximation of PI
 #define NSAMP 256 //used for Number of SAMPles
@@ -53,7 +54,21 @@ extern float mag[];
 //	Function Prototypes
 int main(void);
 
+//using pragmas to configure a project since the settings usually change from project to project anyways
+//setting the system to 72 MHz operation, with a PBclk of 72 MHz
+#pragma config POSCMOD=XT, FNOSC=PRIPLL, FPLLIDIV=DIV_2, FPLLMUL=MUL_18, FPLLODIV=DIV_1
+#pragma config FPBDIV=DIV_1, FWDTEN=OFF, CP=OFF, BWP=OFF
+#pragma config FSOSCEN=OFF, IESO=OFF
+
+
 int main(void) {
+
+    //configuring timer 2 and 3 to be a 32 bit timer
+    T2CONbits.T32 = 1; //This sets operation to 32 bit mode using timers 2 and 3 together
+    T2CONbits.TCKPS = 0; //set the prescaler to 1:1
+    T2CONbits.ON = 1; // start the timer
+
+
 
 float in[NSAMP];  //these need to be global for the DMCI tool we will use later
 float outR[NSAMP];
