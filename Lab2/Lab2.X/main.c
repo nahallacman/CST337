@@ -40,6 +40,8 @@
 //#include <FOURIER.h>
 //#include <FFTMISC.c>
 #include <math.h>
+
+//included to use macros
 #include <plib.h>
 
 #define M_PI 3.14159265358979323846 // approximation of PI
@@ -63,12 +65,37 @@ int main(void);
 
 int main(void) {
 
+    //configuring the prefetch cache
+    //mCheConfigure(CHECON | 0x30);
+    //CHECONbits.PREFEN = 0x3;
+
+
+    //configuring the instruction cache
+    //CheKseg0CacheOn();
+
+    //configuring wait states
+    //default reset value is 7
+    // processor = 72 MHz, Flash speed = 30MHz
+    //this means 2.4 clock cycles per flash cycle
+    //by default the processor always uses one instruction for the load instruction
+    //this means we need 3 cycles total, meaning we need to set the wait state cycles to 2
+    //so we configure the CHECON (Cache Control) register's PFMWS (prefetch module wait states)
+    //CHECONbits.PFMWS = 2;
+
+    //NOTE: the 3 above steps are done with this single macro:
+    SYSTEMConfig(72000000L, SYS_CFG_WAIT_STATES | SYS_CFG_PCACHE);
+
     //configuring timer 2 and 3 to be a 32 bit timer
+    //OpenTimer23(T2_ON | T2_SOURCE_INT | T2_PS_1_1, 0); // set the timer
+    OpenTimer23(T2_OFF | T2_SOURCE_INT | T2_PS_1_1 | T2_32BIT_MODE_ON, 0); // set timer 2 (and 3) with settings.  internal source, 1:1 prescaler, 32 bit mode
+    int time = 0; // variable to count time with
+
+    //configuring timer 2 and 3 to be a 32 bit timer
+    /*
     T2CONbits.T32 = 1; //This sets operation to 32 bit mode using timers 2 and 3 together
     T2CONbits.TCKPS = 0; //set the prescaler to 1:1
     T2CONbits.ON = 1; // start the timer
-
-
+    */
 
 float in[NSAMP];  //these need to be global for the DMCI tool we will use later
 float outR[NSAMP];
@@ -84,6 +111,9 @@ float mag[NSAMP];
         in[n] = 200 * sin(f * 2 * M_PI /NSAMP * n);
     }
 
+    WriteTimer23(0); //make sure the timer value is 0 before we start
+    T2CONbits.ON = 1; // start the timer
+    //the equation we want to find the length of is fft_float
     fft_float(
             NSAMP, // number of samples
             0, // forward FFT
@@ -92,6 +122,7 @@ float mag[NSAMP];
             outR,   //real out
             outI    //imaginary out
         );
+    time = ReadTimer23();
 
     for(n = 0; n < NSAMP +1 ; n++)
     {
