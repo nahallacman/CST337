@@ -44,19 +44,14 @@
 
 
 //set the priority of the timer2 service routine
-//#pragma interrupt T2ISR IPL4 vector 8
+#pragma interrupt T2ISR IPL4 vector 8
 
 //set the priority of the timer3 service routine
-//#pragma interrupt T3ISR IPL2 vector 12
+#pragma interrupt T3ISR IPL2 vector 12
 
-//void T2ISR(void);
+void T2ISR(void);
 
-//void T3ISR(void);
-
-//set the priority of the general service routine
-#pragma interrupt GISR RIPL vector 0
-
-void GISR(void);
+void T3ISR(void);
 
 int global_count;
 int global_count_2;
@@ -85,8 +80,8 @@ int main(void) {
     T3CONbits.TCKPS = 0; //set the prescaler to 1:1
     TMR3 = 0x0; // zero out the timer value just in case
 
-    //turn off multi vectored mode
-    INTCONbits.MVEC = 0;
+    //turn on multi vectored mode
+    INTCONbits.MVEC = 1;
 
     //configure the timer 2 priority
     mT2SetIntPriority(4);
@@ -96,7 +91,7 @@ int main(void) {
     mT2IntEnable(1);
 
     //configure the timer 3 priority
-    mT3SetIntPriority(6);
+    mT3SetIntPriority(2);
     // and sub priority
     mT3SetIntSubPriority(0);
     //Then enable the interrupt
@@ -141,7 +136,6 @@ int main(void) {
     }
 }
 
-/*
 void T2ISR(void)
 {
     //increment global counter
@@ -159,36 +153,4 @@ void T3ISR(void)
     //atomically clear the interrupt flag
     while(1);
     mT3ClearIntFlag();
-}
- */
-
-void GISR(void)
-{
-    //first check which flag has been set
-    //if(Timer2 flag) //IFS0<8>
-    if(IFS0bits.T2IF)
-    {
-        //increment global counter
-        global_count++;
-        //atomically clear the interrupt flag
-        mT2ClearIntFlag();
-        while(1);
-    }
-    //else if(Timer 3 flag) //IFS0<12>
-    else if(IFS0bits.T3IF)
-    {
-        //increment global counter
-        global_count_2++;
-        //atomically clear the interrupt flag
-        mT3ClearIntFlag();
-        while(1);
-    }
-    //else error
-    else
-    {
-        //turn on "error" LED
-        PORTDINV = 1;
-        while(1);
-    }
-
 }
