@@ -2,7 +2,7 @@
  * File:   main.c
  * Author: cal
  *
- * Created on November 8, 2014, 3:19 AM
+ * Created on November 21, 2014, 3:40 AM
  */
 
 /******************************************************************************
@@ -32,47 +32,15 @@
  *
  *****************************************************************************/
 
-// Memory Allocation and Initialization Test
 
-#include <xc.h>
-#include <string.h>
+#include <p32xxxx.h>
 
-const char a[] = "CST 321 Lab 4";
-char b[] =       "Initialized Global Var";
-const char c[] = "Initialized Constant String";
-char d[100] =    "Initialized String Array";
-unsigned int gc = 0; //global initialized to 0
-unsigned int gd; //global uninitialized
-unsigned int ge = 0x45; //global initialized to 0x45
+//	Function Prototypes
+int main(void);
 
-int main(void)
-    {
-    unsigned int ic = 0x0F1E2D3C;
-    unsigned int id = 1;
-    unsigned int ie;
-    const unsigned int icf = 0x98765432;
-    static unsigned int isf = 0x67452301;
-    static const unsigned int iscf = 0xABCDEFFE;
-
-    unsigned long long lc = 0x4B5A69788796A5B4LL;
-    static const unsigned long long lcc = 0xFEDCBA9876543210LL;
-    unsigned long long ld = 1;
-    unsigned long long le;
-
-    char la[] = "Local String Test";
-
-    ie = 0x19283746;
-    ic = icf;
-    ic = isf;
-    ic = iscf;
-    id = gc;
-
-    le = 0x0123456789ABCDEFLL;
-
-    strcpy(d,b);
-    strcpy(d,a);
-    strcpy(d,c);
-    strcpy(b,c);
-    while(1);
+int main(void) {
+    while (1);
 }
+
+
 
