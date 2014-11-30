@@ -20,6 +20,9 @@
     </logicalFolder>
     <itemPath>C:/Users/cal/Desktop/School/CST337/CST337/Lab3.X/main.c</itemPath>
   </logicalFolder>
+  <sourceRootList>
+    <Elem>C:\Users\cal\Desktop\School\CST337\CST337</Elem>
+  </sourceRootList>
   <projectmakefile>Makefile</projectmakefile>
   <confs>
     <conf name="default" type="2">
@@ -28,7 +31,7 @@
         <targetDevice>PIC32MX360F512L</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>RealICEPlatformTool</platformTool>
+        <platformTool>Simulator</platformTool>
         <languageToolchain>XC32</languageToolchain>
         <languageToolchainVersion>1.33</languageToolchainVersion>
         <platform>3</platform>

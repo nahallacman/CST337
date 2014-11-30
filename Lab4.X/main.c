@@ -54,7 +54,7 @@ int main(void)
     static unsigned int isf = 0x67452301;
     static const unsigned int iscf = 0xABCDEFFE;
 
-    unsigned long long lc = 0x4B5A69788796A5B4LL;
+    unsigned long long lc = 0x4B5A64B5A9788796A5B4LL;
     static const unsigned long long lcc = 0xFEDCBA9876543210LL;
     unsigned long long ld = 1;
     unsigned long long le;
