@@ -75,7 +75,7 @@ int main(void) {
 
     for(i = 0; i < 64; i++)
     {
-        oBuff[i] = i;
+        oBuff[i] = -i;
     }
 
     oBuff[0] = 0xFF;
