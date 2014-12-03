@@ -54,7 +54,7 @@ int main(void)
     static unsigned int isf = 0x67452301;
     static const unsigned int iscf = 0xABCDEFFE;
 
-    unsigned long long lc = 0x4B5A64B5A9788796A5B4LL;
+    unsigned long long lc = 0x4B5AA9788796A5B4LL;
     static const unsigned long long lcc = 0xFEDCBA9876543210LL;
     unsigned long long ld = 1;
     unsigned long long le;
@@ -73,6 +73,13 @@ int main(void)
     strcpy(d,a);
     strcpy(d,c);
     strcpy(b,c);
+
+    char * e;
+    //allocate 14 bytes to copy from a with
+    e = (char*)malloc( 13 * sizeof(char) );
+    strcpy(e , a);
+
+
     while(1);
 }
 

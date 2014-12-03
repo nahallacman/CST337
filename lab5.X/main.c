@@ -96,8 +96,8 @@ int main(void) {
     SPI1CONbits.MSTEN = 1; // is this necessary?
     //and BRG for 220ns at 80MHZ system operation
     //FSCK = FPB / ( 2 x (BRG + 1))
-    //SPI1BRG = 8; // 225ns at 80MHz operation
-    SPI1BRG = 39; // 1MHz operation 
+    SPI1BRG = 8; // 225ns at 80MHz operation
+    //SPI1BRG = 39; // 1MHz operation
 
     SPI1CONbits.ON = 1;
 
@@ -278,6 +278,49 @@ int main(void) {
     asm("nop");
     asm("nop");
     asm("nop");
+//--- Begin Check status register until write is done---
+do
+{
+//---Begin SECOND Read Status Command
+    //1. Assert CS
+    LATBbits.LATB10 = 0;
+     //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
+    SPI1BUF = SPI_WRITE_DATA_MEMORY;
+    //SPI_READ_STATUS_REGISTER = SPI1BUF;
+    //3. Wait for TBE (transmitter buffer empty)
+    while( SPI1STATbits.SPITBE == 0 );
+    //4. Write a dummy data byte to SPI1BUF (we need to write a byte to get the SPI to clock the returned status byte in)
+    SPI1BUF = DUMMY_DATA;
+    //5. Wait for RBF (receive buffer full) which will be set after the read status command is fully shifted out.
+    while(SPI1STATbits.SPIRBF == 0);
+    //6. Read SPI1BUF and discard the dummy data that was clocked in while the read status command was sent out.
+    status2 = SPI1BUF;
+    //7. Wait for RBF which will be set after the dummy data byte (sent at step 3) is clocked out
+    while(SPI1STATbits.SPIRBF == 0);
+    //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
+    status = SPI1BUF;
+
+    //9. Negate CS.
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    LATBbits.LATB10 = 1;
+
+
+}
+while(status & 0b00000001);// check if work in progress bit is set
+
+//---End SECOND Read Status Command---
+    asm("nop");
+    asm("nop");
+    asm("nop");
+    asm("nop");
+
  //---Begin Page Read Command---
 //all writes wrap within their 64 byte page. This means the read length is 64 bytes.
     //1. Assert CS
