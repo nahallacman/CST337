@@ -565,10 +565,10 @@ void SPI1ISR()
             SPI1BUF = DUMMY_DATA;
             if(Rnbytes == 1)
             {
-                state = READ7;
+                state = READ8;
             }else if(Rnbytes == 2)
             {
-                state = READ5;
+                state = READ6;
             }else
             {
                 state = N1;
