@@ -2,7 +2,7 @@
  * File:   main.c
  * Author: cal
  *
- * Created on December 2, 2014, 11:37 PM
+ * Created on November 21, 2014, 3:40 AM
  */
 
 /******************************************************************************
@@ -32,6 +32,7 @@
  *
  *****************************************************************************/
 
+
 #include <p32xxxx.h>
 #include <plib.h>
 
@@ -54,7 +55,7 @@ int WRITE_LENGTH = 63; //0-63 = 64 divisions
 int READ_LENGTH = 63;
 char DUMMY_DATA = 0xE5;
 char TEST_DATA = 0x55;
-char ADDR_MSA = 0x30;//testing things out with a read to the very first page (or last page)
+char ADDR_MSA = 0x10;//testing things out with a read to the very first page (or last page)
 char ADDR_LSA = 0x00;//lsb doesn't matter since we are doing reads on a page
 
 #pragma config POSCMOD=XT, FNOSC=PRIPLL, FPLLIDIV=DIV_2, FPLLMUL=MUL_20, FPLLODIV=DIV_1
@@ -74,34 +75,18 @@ int main(void) {
 
     for(i = 0; i < 64; i++)
     {
-        oBuff[i] = i;
+        oBuff[i] = -i;
     }
 
     oBuff[0] = 0xFF;
-    
-//---Begin Timer config for timing how long TBE takes to set--
-    
-    //disable everything about t2 just in case
-    T2CONbits.ON = 0; // make sure the timer is off just in case
-    mT2ClearIntFlag(); // clear the interupt flag just in case
-
-    //configure timer 2
-    PR2 = -1; //set the period register to interrupt every 2^16 counts
-    T2CONbits.TCKPS = 0; //set the prescaler to 1:1
-    TMR2 = 0x0; // zero out the timer value just in case
-
-    T2CONbits.ON = 1;
-
-//---End Timer Config---
-
 //---Begin SPI configuration---
     //RB10 = CS (Chip Select), output, active low, initialize to 1 before setting to output
-
+    
     LATBbits.LATB10 = 1; // initalize to 1
     TRISBbits.TRISB10 = 0; // set to output
     AD1PCFGbits.PCFG10 = 1; //turn off analog input control
 
-
+    
     //using SPI 1, with CKE = 0, CKP = 1, SMP = 0,
     SPI1CONbits.CKE = 0;
     SPI1CONbits.CKP = 1;
@@ -160,9 +145,9 @@ int main(void) {
     while(SPI1STATbits.SPIRBF == 0);
     //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
     status = SPI1BUF;
-
+    
     //9. Negate CS.
-
+    
     asm("nop");
     asm("nop");
     asm("nop");
@@ -171,7 +156,7 @@ int main(void) {
     asm("nop");
     asm("nop");
     asm("nop");
-
+    
     LATBbits.LATB10 = 1;
 
 //---End Read Status Command---
@@ -257,7 +242,7 @@ int main(void) {
     SPI1BUF;
     //7. Write LSA
     SPI1BUF = ADDR_LSA;
-
+ 
     //loop for data write
     for(i = 0; i < WRITE_LENGTH; i++) //loop two less than the actual number of
     {
@@ -342,7 +327,7 @@ while(status & 0b00000001);// check if work in progress bit is set
     LATBbits.LATB10 = 0;
      //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
     SPI1BUF = SPI_READ_DATA_MEMORY;
-
+    //SPI_READ_STATUS_REGISTER = SPI1BUF;
     //3. Wait for TBE (transmitter buffer empty)
     while( SPI1STATbits.SPITBE == 0 );
     //4. Write the address MSB
@@ -354,23 +339,23 @@ while(status & 0b00000001);// check if work in progress bit is set
     //7. Write LSA
     SPI1BUF = ADDR_LSA;
 
-
+    
     //8. Wait for RBF
     while(SPI1STATbits.SPIRBF == 0);
     //9. Read SPI1BUF and discard the dummy data
     SPI1BUF;
     //10. Write dummy data
     SPI1BUF = DUMMY_DATA;
-
-
+    
+    
     //8. Wait for RBF
     while(SPI1STATbits.SPIRBF == 0);
     //9. Read SPI1BUF and discard the dummy data
     SPI1BUF;
     //10. Write dummy data
     SPI1BUF = DUMMY_DATA;
-
-
+    
+    
     //loop for data write
     for(i = 0; i < READ_LENGTH - 2; i++) //loop two less than the actual number of
     {
@@ -379,7 +364,7 @@ while(status & 0b00000001);// check if work in progress bit is set
         //12. save recieved byte
         iBuff[i] = SPI1BUF;
         //13. write dummy data
-        SPI1BUF = DUMMY_DATA; //
+        SPI1BUF = DUMMY_DATA; // 
     }
 
     //14. Wait for RBF
