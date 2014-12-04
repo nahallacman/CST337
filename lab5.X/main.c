@@ -35,9 +35,19 @@
 #include <p32xxxx.h>
 #include <plib.h>
 
+//set the priority of the timer2 service routine
+#pragma interrupt SPI1ISR IPL4 vector 23
+
 //	Function Prototypes
 int main(void);
 
+//void ReadEEProm(int nbytes, unsigned int address, unsigned char[] readbuffer);
+//void WriteEEProm(int nbytes, unsigned int address, unsigned char[] writebuffer);
+void ReadEEProm(int nbytes, unsigned int address, unsigned char* readbuffer);
+void WriteEEProm(int nbytes, unsigned int address, unsigned char* writebufer);
+
+//actual SPI ISR
+void SPI1ISR();
 
 char SPI_READ_STATUS_REGISTER = 0b00000101;
 char SPI_WRITE_STATUS_REGISTER = 0b00000001;
@@ -54,8 +64,25 @@ int WRITE_LENGTH = 63; //0-63 = 64 divisions
 int READ_LENGTH = 63;
 char DUMMY_DATA = 0xE5;
 char TEST_DATA = 0x55;
-char ADDR_MSA = 0x30;//testing things out with a read to the very first page (or last page)
+char ADDR_MSA = 0x00;//testing things out with a read to the very first page (or last page)
 char ADDR_LSA = 0x00;//lsb doesn't matter since we are doing reads on a page
+
+int EEPromSysBusy = 0; // initalize to 0, will tell the user if the system is busy using the SPI device or not
+unsigned int state = 0; // controls the state machine
+int Rnbytes = 0; // use for global access of how many bytes to read
+char RADDR_MSA = 0x10;
+char RADDR_LSA = 0x00;
+char * RBUFF;
+unsigned int READNUM = 0; // internal ISR counter for number of bytes to read still
+
+#define CHECKSTATUS 0
+#define READ1 1
+#define READ2 2
+#define READ3 3
+#define READ4 4
+#define READ5 5
+#define READ6 6
+#define WRITE1 10
 
 #pragma config POSCMOD=XT, FNOSC=PRIPLL, FPLLIDIV=DIV_2, FPLLMUL=MUL_20, FPLLODIV=DIV_1
 #pragma config FPBDIV=DIV_1, FWDTEN=OFF, CP=OFF, BWP=OFF
@@ -95,12 +122,11 @@ int main(void) {
 //---End Timer Config---
 
 //---Begin SPI configuration---
-    //RB10 = CS (Chip Select), output, active low, initialize to 1 before setting to output
 
+    //RB10 = CS (Chip Select), output, active low, initialize to 1 before setting to output
     LATBbits.LATB10 = 1; // initalize to 1
     TRISBbits.TRISB10 = 0; // set to output
     AD1PCFGbits.PCFG10 = 1; //turn off analog input control
-
 
     //using SPI 1, with CKE = 0, CKP = 1, SMP = 0,
     SPI1CONbits.CKE = 0;
@@ -116,21 +142,44 @@ int main(void) {
 
     SPI1CONbits.ON = 1;
 
+    //turn on multi vectored mode
+    INTCONbits.MVEC = 1;
 
-    /*
-    IEC0CLR = 0x03800000;
-    SPI1CON = 0;
-    SPI1BUF;
-    SPI1BRG = 39;
-    SPI1STATCLR = 0x40;
-    SPI1CON = 0x8220;
-    */
+    //using interupts
+    // bits 23, 24, and 25
+    // 0011 1000 0000 0000 0000 0000 0000 = 0x3800000
+    IFS0CLR = 0x3800000; // clear the interupt flags just in case
+    IEC0SET = 0x3800000; // set the interrupt enables
 
+    //bits 28:26 = priority
+    // 0001 1100 0000 0000 0000 0000 0000 0000 = 0x1C000000
+    IPC5SET = 0x10000000; //set the priority to 4
+    //bits 25:24 = subpriority
+    // 0011 0000 0000 0000 0000 0000 0000 = 0x3000000
+    IPC5CLR = 0x3000000; //clear the subpriority to 0
+
+    //mSPI1SetIntPriority(4);
+    //mSPI1SetIntSubPriority(0);
+
+    //mSPI1SetIntEnable(1);
 
 
 
 //---End SPI Configuration---
 
+    //enable interrupts
+    asm("ei");
+
+    //ReadEEProm(1, 0x1234, iBuff);
+
+
+
+
+
+
+
+
+ /*
 //---Begin SPI Read Status command--- //2 byte shifted out
     //communication pattern for read status
     //1. Assert CS.
@@ -240,6 +289,7 @@ int main(void) {
     asm("nop");
     asm("nop");
     asm("nop");
+ */
 //---Begin Page Write Command---
 //all writes wrap within their 64 byte page. This means the max write length is 64 bytes.
     //1. Assert CS
@@ -335,7 +385,7 @@ while(status & 0b00000001);// check if work in progress bit is set
     asm("nop");
     asm("nop");
     asm("nop");
-
+/*
  //---Begin Page Read Command---
 //all writes wrap within their 64 byte page. This means the read length is 64 bytes.
     //1. Assert CS
@@ -347,6 +397,7 @@ while(status & 0b00000001);// check if work in progress bit is set
     while( SPI1STATbits.SPITBE == 0 );
     //4. Write the address MSB
     SPI1BUF = ADDR_MSA;
+ 
     //5. Wait for RBF (receive buffer full)
     while(SPI1STATbits.SPIRBF == 0);
     //6. Read SPI1BUF and discard the dummy data
@@ -402,7 +453,175 @@ while(status & 0b00000001);// check if work in progress bit is set
     asm("nop");
     LATBbits.LATB10 = 1;
 //---End Page Write Command---
+*/
 
-
+    ReadEEProm(1, 0x1000, iBuff);
     while (1);
+}
+
+
+
+//manually set the SPI1 interrupt flag
+void ReadEEProm(int nbytes, unsigned int address, unsigned char* readbuffer)
+{
+    if( nbytes != 0)
+    {
+    //check EEPromSysBusy until it is 0
+    while(EEPromSysBusy);
+
+    asm("di"); //disable interrupts while global variables are being accessed
+    //prepare the system to read nbytes bytes.
+
+    state = READ1;
+    EEPromSysBusy = 1;
+    Rnbytes = nbytes;
+    RADDR_MSA = (address >> 8);
+    RADDR_LSA = address & 0x00FF;
+    RBUFF = readbuffer; // this may need to copy address of instead
+    READNUM = 0; // initalize to 0
+    
+    asm("ei"); //enable interrupts after global variables are being accessed
+    
+    //manually set the SPI1 TX interrupt flag
+    IFS0SET = 0x01000000;
+    //manually set the SPI1 RX interrupt flag
+    //IFS0SET = 0x02000000;
+    //manually set the SPI1 error interrupt flag
+    //IFS0SET = 0x04000000;
+    //IFS0bits.SPI1TXIF = 1;
+
+    }
+    else
+    {
+        //error? cant read 0 bytes
+    }
+    
+    return;
+}
+
+void WriteEEProm(int nbytes, unsigned int address, unsigned char* writebuffer)
+{
+    //check EEPromSysBusy until it is 0
+    while(EEPromSysBusy);
+    //prepare the system to read nbytes bytes.
+    state = WRITE1;
+
+
+
+    return;
+}
+
+void SPI1ISR()
+{
+    //note: will probably need to check which interrupt flag has been set
+    //manually clear the SPI1 TX interrupt flag
+    IFS0CLR = 0x07000000;
+    
+    switch(state)
+    {
+        case CHECKSTATUS:
+            break;
+
+        case READ1:
+            //---Begin Page Read Command---
+            //all writes wrap within their 64 byte page. This means the read length is 64 bytes.
+            //1. Assert CS
+            LATBbits.LATB10 = 0;
+            //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
+            SPI1BUF = SPI_READ_DATA_MEMORY;
+
+            //3. Wait for TBE (transmitter buffer empty)
+            while( SPI1STATbits.SPITBE == 0 );
+            //4. Write the address MSB
+            SPI1BUF = RADDR_MSA;
+            state = READ2;
+            break;
+
+        case READ2:
+            //5. Wait for RBF (receive buffer full)
+            //while(SPI1STATbits.SPIRBF == 0);
+            //6. Read SPI1BUF and discard the dummy data
+            SPI1BUF;
+            //7. Write LSA
+            SPI1BUF = RADDR_LSA;
+            state = READ3;
+            break;
+
+        case READ3:
+            //8. Wait for RBF
+            //while(SPI1STATbits.SPIRBF == 0);
+            //9. Read SPI1BUF and discard the dummy data
+            SPI1BUF;
+            //10. Write dummy data
+            SPI1BUF = DUMMY_DATA;
+            if(Rnbytes == 1)
+            {
+                state = READ6;
+            }else if(Rnbytes == 2)
+            {
+                state = READ5;
+            }else
+            {
+                state = READ4;
+            }
+            break;
+
+        case READ4:
+            if(READNUM < Rnbytes - 2)
+            {
+
+            }
+            else
+            {
+                state = READ5;
+            }
+            //loop for data write
+            //for(i = 0; i < READ_LENGTH - 2; i++) //loop two less than the actual number of
+            //{
+            //11. Wait for RBF
+            //while(SPI1STATbits.SPIRBF == 0);
+            //12. save recieved byte
+            RBUFF[READNUM] = SPI1BUF;
+            //13. write dummy data
+            SPI1BUF = DUMMY_DATA; //
+            //}
+            READNUM++;
+            break;
+
+        case READ5:
+            //14. Wait for RBF
+            //while(SPI1STATbits.SPIRBF == 0);
+            //15. Read second to last byte of data
+            RBUFF[READNUM] = SPI1BUF;
+            READNUM++;
+            state = READ6;
+            break;
+        case READ6:
+            //16. Wait for RBF
+            //while(SPI1STATbits.SPIRBF == 0);
+            //17. Read last byte of data
+            RBUFF[READNUM] = SPI1BUF;
+
+            //18. Negate CS.
+            /*
+            asm("nop");
+            asm("nop");
+            asm("nop");
+            asm("nop");
+            asm("nop");
+            asm("nop");
+            asm("nop");
+            asm("nop");
+             * */
+            LATBbits.LATB10 = 1;
+            state = CHECKSTATUS;
+            //---End Page Write Command---
+            break;
+        case WRITE1:
+            break;
+        default:
+            //error?
+            break;
+    }
+    EEPromSysBusy = 0;
 }
