@@ -462,7 +462,7 @@ while(status & 0b00000001);// check if work in progress bit is set
 //---End Page Write Command---
 */
 
-    ReadEEProm(3, 0x1000, iBuff);
+    ReadEEProm(64, 0x1000, iBuff);
     while (1);
 }
 
