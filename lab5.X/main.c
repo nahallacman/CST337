@@ -104,8 +104,9 @@ unsigned int WRITENUM = 0;
 #define CHECKWELSTATUS1 300
 #define CHECKWELSTATUS2 301
 #define CHECKWELSTATUS3 302
-#define SETWEL1 303
-#define SETWEL2 304
+#define CHECKWELSTATUS4 303
+#define SETWEL1 500
+#define SETWEL2 501
 #define CHECKSTATUSWRITE1 400
 #define CHECKSTATUSWRITE2 401
 #define CHECKSTATUSWRITE3 402
@@ -114,6 +115,7 @@ unsigned int WRITENUM = 0;
 #define WRITE3 1002
 #define WRITE4 1003
 #define WRITE5 1004
+#define WRITE6 1005
 
 #pragma config POSCMOD=XT, FNOSC=PRIPLL, FPLLIDIV=DIV_2, FPLLMUL=MUL_20, FPLLODIV=DIV_1
 #pragma config FPBDIV=DIV_1, FWDTEN=OFF, CP=OFF, BWP=OFF
@@ -784,22 +786,20 @@ void SPI1ISR()
             // while(SPI1STATbits.SPIRBF == 0);
             //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
             rstatus = SPI1BUF;
-            //9. Negate CS.
-            /*
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            LATBbits.LATB10 = 1;
-            */
 
+            state = CHECKWELSTATUS4;
+            break;
+        case CHECKWELSTATUS4:
+
+            
+            //9. Negate CS.
+            LATBbits.LATB10 = 1;
+
+            SPI1BUF;
             //check if write enable latch is not set
             if((rstatus & 0b00000010) == 0)
             {
+                
                 state = SETWEL1;
             }
             // check if write in progress bit is set
@@ -813,7 +813,7 @@ void SPI1ISR()
             }
             //manually set the SPI1 RX interrupt flag so the ISR will re-enter
             IFS0SET = 0x02000000;
-            LATBbits.LATB10 = 1;
+
             break;
 
         case SETWEL1:
@@ -829,7 +829,7 @@ void SPI1ISR()
         case SETWEL2:
             //3. Wait for RBF (receive buffer full) which will be set after the write status command is fully shifted out.
             //4. Read dummy data
-            SPI1BUF;
+            //SPI1BUF;
             //5. Negate CS.
             asm("nop");
             asm("nop");
@@ -894,7 +894,9 @@ void SPI1ISR()
             //while(SPI1STATbits.SPIRBF == 0);
             //17. discard dummy data
             SPI1BUF;
-
+            state = WRITE6;
+            break;
+        case WRITE6:
             //18. Negate CS.
             LATBbits.LATB10 = 1;
             state = CHECKSTATUS; // what should actually go here?
