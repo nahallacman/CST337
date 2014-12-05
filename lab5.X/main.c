@@ -64,7 +64,7 @@ int WRITE_LENGTH = 63; //0-63 = 64 divisions
 int READ_LENGTH = 63;
 char DUMMY_DATA = 0xE5;
 char TEST_DATA = 0x55;
-char ADDR_MSA = 0x10;//testing things out with a read to the very first page (or last page)
+char ADDR_MSA = 0x00;//testing things out with a read to the very first page (or last page)
 char ADDR_LSA = 0x00;//lsb doesn't matter since we are doing reads on a page
 
 int entrycount = 0;
@@ -72,7 +72,7 @@ int entrycount = 0;
 int EEPromSysBusy = 0; // initalize to 0, will tell the user if the system is busy using the SPI device or not
 unsigned int state = 0; // controls the state machine
 int Rnbytes = 0; // use for global access of how many bytes to read
-char RADDR_MSA = 0x10;
+char RADDR_MSA = 0x00;
 char RADDR_LSA = 0x00;
 char * RBUFF;
 unsigned int READNUM = 0; // internal ISR counter for number of bytes to read still
@@ -87,8 +87,10 @@ unsigned int READNUM = 0; // internal ISR counter for number of bytes to read st
 #define READ7 7
 #define READ8 8
 #define READ9 9
+#define READ10 10
+#define READ11 11
 #define N1 100
-#define WRITE1 10
+#define WRITE1 1000
 
 #pragma config POSCMOD=XT, FNOSC=PRIPLL, FPLLIDIV=DIV_2, FPLLMUL=MUL_20, FPLLODIV=DIV_1
 #pragma config FPBDIV=DIV_1, FWDTEN=OFF, CP=OFF, BWP=OFF
@@ -107,10 +109,12 @@ int main(void) {
 
     for(i = 0; i < 64; i++)
     {
+        iBuff[i] = 0;
         oBuff[i] = i;
     }
 
-    oBuff[0] = 0xFF;
+    oBuff[0] = 0x55;
+    oBuff[63] = 0x55;
     
 //---Begin Timer config for timing how long TBE takes to set--
     
@@ -143,8 +147,9 @@ int main(void) {
     SPI1CONbits.MSTEN = 1; // is this necessary?
     //and BRG for 220ns at 80MHZ system operation
     //FSCK = FPB / ( 2 x (BRG + 1))
-    SPI1BRG = 8; // 225ns at 80MHz operation
-    //SPI1BRG = 39; // 1MHz operation
+
+    //SPI1BRG = 8; // 225ns at 80MHz operation
+    SPI1BRG = 39; // 1MHz operation
 
     SPI1CONbits.ON = 1;
 
@@ -316,7 +321,7 @@ int main(void) {
     SPI1BUF = ADDR_LSA;
 
     //loop for data write
-    for(i = 0; i < WRITE_LENGTH; i++) //loop two less than the actual number of
+    for(i = 0; i < WRITE_LENGTH + 1; i++) //loop two less than the actual number of
     {
         //11. Wait for RBF
         while(SPI1STATbits.SPIRBF == 0);
@@ -392,7 +397,8 @@ while(status & 0b00000001);// check if work in progress bit is set
     asm("nop");
     asm("nop");
     asm("nop");
-/*
+
+    
  //---Begin Page Read Command---
 //all writes wrap within their 64 byte page. This means the read length is 64 bytes.
     //1. Assert CS
@@ -430,7 +436,7 @@ while(status & 0b00000001);// check if work in progress bit is set
 
 
     //loop for data write
-    for(i = 0; i < READ_LENGTH - 2; i++) //loop two less than the actual number of
+    for(i = 0; i < READ_LENGTH - 1; i++) //loop two less than the actual number of
     {
         //11. Wait for RBF
         while(SPI1STATbits.SPIRBF == 0);
@@ -459,10 +465,14 @@ while(status & 0b00000001);// check if work in progress bit is set
     asm("nop");
     asm("nop");
     LATBbits.LATB10 = 1;
-//---End Page Write Command---
-*/
+//---End Page Read Command---
 
-    ReadEEProm(2, 0x1000, iBuff);
+    for(i = 0; i < 64; i++)
+    {
+        iBuff[i] = 0;
+    }
+
+    ReadEEProm(64, 0x0000, iBuff);
     while (1);
 }
 
@@ -582,10 +592,15 @@ void SPI1ISR()
 
 
         case READ4: //11. Wait for RBF
-   
-            if( READNUM > Rnbytes - 2)
+
+            if( READNUM < Rnbytes - 3 )
+            //if( READNUM < Rnbytes - 4 )
+            //if( READNUM < Rnbytes - 2)
+            //if( READNUM >= Rnbytes - 3)
+            {}
+            else
             {
-                state = READ6;
+                state = READ10;
             }
             //12. save recieved byte
             RBUFF[READNUM] = SPI1BUF;
@@ -618,6 +633,21 @@ void SPI1ISR()
             state = READ9;
             break;
         case READ9:
+            //18. Negate CS.
+            LATBbits.LATB10 = 1; // note: CS MAY be reasserted to early
+
+            //---End Page Write Command---
+            state = CHECKSTATUS;
+            break;
+        case READ10:
+            //14. Read second to last byte of data
+            RBUFF[READNUM] = SPI1BUF;
+            READNUM++;
+            state = READ11;
+            break;
+        case READ11:
+            //15. Read last byte of data
+            RBUFF[READNUM] = SPI1BUF;
             //18. Negate CS.
             LATBbits.LATB10 = 1; // note: CS MAY be reasserted to early
 
