@@ -186,7 +186,7 @@ int main(void) {
 
 
 
- /*
+ 
 //---Begin SPI Read Status command--- //2 byte shifted out
     //communication pattern for read status
     //1. Assert CS.
@@ -296,7 +296,7 @@ int main(void) {
     asm("nop");
     asm("nop");
     asm("nop");
- */
+ 
 //---Begin Page Write Command---
 //all writes wrap within their 64 byte page. This means the max write length is 64 bytes.
     //1. Assert CS
@@ -462,7 +462,7 @@ while(status & 0b00000001);// check if work in progress bit is set
 //---End Page Write Command---
 */
 
-    ReadEEProm(64, 0x1000, iBuff);
+    ReadEEProm(2, 0x1000, iBuff);
     while (1);
 }
 
@@ -565,10 +565,10 @@ void SPI1ISR()
             SPI1BUF = DUMMY_DATA;
             if(Rnbytes == 1)
             {
-                state = READ8;
+                state = READ7;
             }else if(Rnbytes == 2)
             {
-                state = READ6;
+                state = READ5;
             }else
             {
                 state = N1;
@@ -606,7 +606,7 @@ void SPI1ISR()
             //?? clock out last dummy data
             SPI1BUF = DUMMY_DATA; 
             READNUM++;
-            state = READ9;
+            state = READ8;
             break;
         case READ7:
             SPI1BUF;
