@@ -165,6 +165,11 @@ int main(void) {
     TRISBbits.TRISB10 = 0; // set to output
     AD1PCFGbits.PCFG10 = 1; //turn off analog input control
 
+    //RB2 = test pin
+    LATBbits.LATB2 = 1; // initalize to 1
+    TRISBbits.TRISB2 = 0; // set to output
+    AD1PCFGbits.PCFG2 = 1; //turn off analog input control
+
     //using SPI 1, with CKE = 0, CKP = 1, SMP = 0,
     SPI1CONbits.CKE = 0;
     SPI1CONbits.CKP = 1;
@@ -209,305 +214,16 @@ int main(void) {
     //enable interrupts
     asm("ei");
 
-    //ReadEEProm(1, 0x1234, iBuff);
-
-
-
-
-
-
-
-
-
-//---Begin SPI Read Status command--- //2 byte shifted out
-    //communication pattern for read status
-    //1. Assert CS.
-    //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
-    //3. Wait for TBE (transmitter buffer empty)
-    //4. Write a dummy data byte to SPI1BUF (we need to write a byte to get the SPI to clock the returned status byte in)
-    //5. Wait for RBF (receive buffer full) which will be set after the read status command is fully shifted out.
-    //6. Read SPI1BUF and discard the dummy data that was clocked in while the read status command was sent out.
-    //7. Wait for RBF which will be set after the dummy data byte (sent at step 3) is clocked out
-    //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
-    //9. Negate CS.
-
-    //1. Assert CS
-    LATBbits.LATB10 = 0;
-     //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
-    SPI1BUF = SPI_READ_STATUS_REGISTER;
-    //SPI_READ_STATUS_REGISTER = SPI1BUF;
-    //3. Wait for TBE (transmitter buffer empty)
-    while( SPI1STATbits.SPITBE == 0 );
-    //4. Write a dummy data byte to SPI1BUF (we need to write a byte to get the SPI to clock the returned status byte in)
-    SPI1BUF = DUMMY_DATA;
-    //5. Wait for RBF (receive buffer full) which will be set after the read status command is fully shifted out.
-    while(SPI1STATbits.SPIRBF == 0);
-    //6. Read SPI1BUF and discard the dummy data that was clocked in while the read status command was sent out.
-    status2 = SPI1BUF;
-    //7. Wait for RBF which will be set after the dummy data byte (sent at step 3) is clocked out
-    while(SPI1STATbits.SPIRBF == 0);
-    //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
-    status = SPI1BUF;
-
-    //9. Negate CS.
-
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-
-    LATBbits.LATB10 = 1;
-
-//---End Read Status Command---
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-//---Begin Set Write Enable Latch Command--- // 1 byte shifted out
-    //note: this may not need the second read/write cycle
-    //1. Assert CS
-    LATBbits.LATB10 = 0;
-    //2. Write a write status command to the 25LC256
-    SPI1BUF = SPI_SET_WRITE_ENABLE_LATCH;
-    //3. Wait for RBF (receive buffer full) which will be set after the write status command is fully shifted out.
-    while(SPI1STATbits.SPIRBF == 0);
-    //4. Read
-    status = SPI1BUF;
-    //5. Negate CS.
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    LATBbits.LATB10 = 1;
-
-//---End Set Write Enable Latch Command---
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-//---Begin SECOND Read Status Command
-    //1. Assert CS
-    LATBbits.LATB10 = 0;
-     //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
-    SPI1BUF = SPI_READ_STATUS_REGISTER;
-    //SPI_READ_STATUS_REGISTER = SPI1BUF;
-    //3. Wait for TBE (transmitter buffer empty)
-    while( SPI1STATbits.SPITBE == 0 );
-    //4. Write a dummy data byte to SPI1BUF (we need to write a byte to get the SPI to clock the returned status byte in)
-    SPI1BUF = DUMMY_DATA;
-    //5. Wait for RBF (receive buffer full) which will be set after the read status command is fully shifted out.
-    while(SPI1STATbits.SPIRBF == 0);
-    //6. Read SPI1BUF and discard the dummy data that was clocked in while the read status command was sent out.
-    status2 = SPI1BUF;
-    //7. Wait for RBF which will be set after the dummy data byte (sent at step 3) is clocked out
-    while(SPI1STATbits.SPIRBF == 0);
-    //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
-    status = SPI1BUF;
-
-    //9. Negate CS.
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    LATBbits.LATB10 = 1;
-
-//---End SECOND Read Status Command---
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-
-
-//---Begin Page Write Command---
-//all writes wrap within their 64 byte page. This means the max write length is 64 bytes.
-    //1. Assert CS
-    LATBbits.LATB10 = 0;
-     //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
-    SPI1BUF = SPI_WRITE_DATA_MEMORY;
-    //SPI_READ_STATUS_REGISTER = SPI1BUF;
-    //3. Wait for TBE (transmitter buffer empty)
-    while( SPI1STATbits.SPITBE == 0 );
-    //4. Write the address MSB
-    SPI1BUF = ADDR_MSA;
-    //5. Wait for RBF (receive buffer full)
-    while(SPI1STATbits.SPIRBF == 0);
-    //6. Read SPI1BUF and discard the dummy data
-    SPI1BUF;
-    //7. Write LSA
-    SPI1BUF = ADDR_LSA;
-
-    //loop for data write
-    for(i = 0; i < WRITE_LENGTH + 1; i++) //loop two less than the actual number of
-    {
-        //11. Wait for RBF
-        while(SPI1STATbits.SPIRBF == 0);
-        //12. discard dummy data
-        SPI1BUF;
-        //13.
-        SPI1BUF = oBuff[i]; // REAL DATA not actual dummy data
-    }
-
-    //14. Wait for RBF
-    while(SPI1STATbits.SPIRBF == 0);
-    //15. discard dummy data
-    SPI1BUF;
-    //16. Wait for RBF
-    while(SPI1STATbits.SPIRBF == 0);
-    //17. discard dummy data
-    SPI1BUF;
-
-    //18. Negate CS.
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    LATBbits.LATB10 = 1;
-//---End Page Write Command---
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-//--- Begin Check status register until write is done---
-do
-{
-//---Begin SECOND Read Status Command
-    //1. Assert CS
-    LATBbits.LATB10 = 0;
-     //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
-    SPI1BUF = SPI_READ_STATUS_REGISTER;
-    //SPI_READ_STATUS_REGISTER = SPI1BUF;
-    //3. Wait for TBE (transmitter buffer empty)
-    while( SPI1STATbits.SPITBE == 0 );
-    //4. Write a dummy data byte to SPI1BUF (we need to write a byte to get the SPI to clock the returned status byte in)
-    SPI1BUF = DUMMY_DATA;
-    //5. Wait for RBF (receive buffer full) which will be set after the read status command is fully shifted out.
-    while(SPI1STATbits.SPIRBF == 0);
-    //6. Read SPI1BUF and discard the dummy data that was clocked in while the read status command was sent out.
-    status2 = SPI1BUF;
-    //7. Wait for RBF which will be set after the dummy data byte (sent at step 3) is clocked out
-    while(SPI1STATbits.SPIRBF == 0);
-    //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
-    status = SPI1BUF;
-
-    //9. Negate CS.
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    LATBbits.LATB10 = 1;
-
-
-}
-while(status & 0b00000001);// check if work in progress bit is set
-
-//---End SECOND Read Status Command---
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-
-    /*
-//---Begin Page Read Command---
-//all writes wrap within their 64 byte page. This means the read length is 64 bytes.
-    //1. Assert CS
-    LATBbits.LATB10 = 0;
-     //2. Write a read status command to the 25LC256 (write a read status command to SPI1BUF).
-    SPI1BUF = SPI_READ_DATA_MEMORY;
-
-    //3. Wait for TBE (transmitter buffer empty)
-    while( SPI1STATbits.SPITBE == 0 );
-    //4. Write the address MSB
-    SPI1BUF = ADDR_MSA;
- 
-    //5. Wait for RBF (receive buffer full)
-    while(SPI1STATbits.SPIRBF == 0);
-    //6. Read SPI1BUF and discard the dummy data
-    SPI1BUF;
-    //7. Write LSA
-    SPI1BUF = ADDR_LSA;
-
-
-    //8. Wait for RBF
-    while(SPI1STATbits.SPIRBF == 0);
-    //9. Read SPI1BUF and discard the dummy data
-    SPI1BUF;
-    //10. Write dummy data
-    SPI1BUF = DUMMY_DATA;
-
-
-    //8. Wait for RBF
-    while(SPI1STATbits.SPIRBF == 0);
-    //9. Read SPI1BUF and discard the dummy data
-    SPI1BUF;
-    //10. Write dummy data
-    SPI1BUF = DUMMY_DATA;
-
-
-    //loop for data write
-    for(i = 0; i < READ_LENGTH - 1; i++) //loop two less than the actual number of
-    {
-        //11. Wait for RBF
-        while(SPI1STATbits.SPIRBF == 0);
-        //12. save recieved byte
-        iBuff[i] = SPI1BUF;
-        //13. write dummy data
-        SPI1BUF = DUMMY_DATA; //
-    }
-
-    //14. Wait for RBF
-    while(SPI1STATbits.SPIRBF == 0);
-    //15. Read second to last byte of data
-    iBuff[62] = SPI1BUF;
-    //16. Wait for RBF
-    while(SPI1STATbits.SPIRBF == 0);
-    //17. Read last byte of data
-    iBuff[63] = SPI1BUF;
-
-    //18. Negate CS.
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    asm("nop");
-    LATBbits.LATB10 = 1;
-//---End Page Read Command---
-
-    for(i = 0; i < 64; i++)
-    {
-        iBuff[i] = 0;
-    }
-*/
-
     ReadEEProm(64, 0x2000, iBuff);
 
     WriteEEProm(64, 0x4000, oBuff);
 
     ReadEEProm(64, 0x4000, iBuff2);
     
-    while (1);
+    while (1)
+    {
+        PORTBINV = 0x04;
+    }
 }
 
 
@@ -623,17 +339,7 @@ void SPI1ISR()
             //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
             rstatus = SPI1BUF;
 
-            /*
             //9. Negate CS.
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            asm("nop");
-            */
             LATBbits.LATB10 = 1;
 
             // check if work in progress bit is set
@@ -740,7 +446,7 @@ void SPI1ISR()
         case READ9:
             //18. Negate CS.
             LATBbits.LATB10 = 1; // note: CS MAY be reasserted to early
-
+            EEPromSysBusy = 0;
             //---End Page Write Command---
             state = CHECKSTATUS;
             break;
@@ -835,6 +541,7 @@ void SPI1ISR()
             //4. Read dummy data
             SPI1BUF;
             //5. Negate CS.
+            /*
             asm("nop");
             asm("nop");
             asm("nop");
@@ -843,6 +550,7 @@ void SPI1ISR()
             asm("nop");
             asm("nop");
             asm("nop");
+            */
             LATBbits.LATB10 = 1;
 
             state = CHECKWELSTATUS1;
