@@ -46,7 +46,7 @@ int main(void);
 void ReadEEProm(int nbytes, unsigned int address, unsigned char* readbuffer);
 void WriteEEProm(int nbytes, unsigned int address, unsigned char* writebufer);
 
-//actual SPI ISR
+//SPI ISR declaration
 void SPI1ISR();
 
 char SPI_READ_STATUS_REGISTER = 0b00000101;
@@ -175,8 +175,8 @@ int main(void) {
     //and BRG for 220ns at 80MHZ system operation
     //FSCK = FPB / ( 2 x (BRG + 1))
 
-    //SPI1BRG = 8; // 225ns at 80MHz operation
-    SPI1BRG = 39; // 1MHz operation
+    SPI1BRG = 8; // 225ns at 80MHz operation
+    //SPI1BRG = 39; // 1MHz operation
 
     SPI1CONbits.ON = 1;
 
@@ -505,7 +505,7 @@ while(status & 0b00000001);// check if work in progress bit is set
 
     WriteEEProm(64, 0x4000, oBuff);
 
-    //ReadEEProm(64, 0x4000, iBuff2);
+    ReadEEProm(64, 0x4000, iBuff2);
     
     while (1);
 }
@@ -758,6 +758,7 @@ void SPI1ISR()
 
             //---End Page Write Command---
             state = CHECKSTATUS;
+            EEPromSysBusy = 0;
             break;
 
         case CHECKWELSTATUS1:
@@ -786,6 +787,9 @@ void SPI1ISR()
             // while(SPI1STATbits.SPIRBF == 0);
             //8. Read the status byte which was clocked in from the 25LC256 while the dummy data byte (sent at step 3) was clocked out.
             rstatus = SPI1BUF;
+            
+            //manually set the SPI1 RX interrupt flag so the ISR will re-enter
+            IFS0SET = 0x02000000;
 
             state = CHECKWELSTATUS4;
             break;
@@ -795,11 +799,11 @@ void SPI1ISR()
             //9. Negate CS.
             LATBbits.LATB10 = 1;
 
-            SPI1BUF;
+            //SPI1BUF;
             //check if write enable latch is not set
             if((rstatus & 0b00000010) == 0)
             {
-                
+                //state = CHECKSTATUSWRITE1;
                 state = SETWEL1;
             }
             // check if write in progress bit is set
@@ -829,7 +833,7 @@ void SPI1ISR()
         case SETWEL2:
             //3. Wait for RBF (receive buffer full) which will be set after the write status command is fully shifted out.
             //4. Read dummy data
-            //SPI1BUF;
+            SPI1BUF;
             //5. Negate CS.
             asm("nop");
             asm("nop");
@@ -895,16 +899,19 @@ void SPI1ISR()
             //17. discard dummy data
             SPI1BUF;
             state = WRITE6;
+            //manually set the SPI1 RX interrupt flag so the ISR will re-enter
+            IFS0SET = 0x02000000;
             break;
         case WRITE6:
             //18. Negate CS.
             LATBbits.LATB10 = 1;
             state = CHECKSTATUS; // what should actually go here?
+            EEPromSysBusy = 0; // this may need to be moved
             break;
             
         default:
             //error?
             break;
     }
-    EEPromSysBusy = 0;
+    
 }
