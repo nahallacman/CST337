@@ -33,10 +33,18 @@
  *****************************************************************************/
 
 //set the priority of the UART1 service routine
-#pragma interrupt UART1ISR IPL4 vector 24
+#pragma interrupt UART1ISR IPL7 vector 24
+//set the priortiy of the Timer 2&3 service routine
+#pragma interrupt T23ISR IPL2 vector 12
+//set the priortiy of the Timer 4&5 service routine
+#pragma interrupt T45ISR IPL1 vector 20
 
 //UART1 ISR declaration
 void UART1ISR();
+//Timer2and3 ISR declaration
+void T23ISR();
+//timer 4and5 ISR declaration
+void T45ISR();
 
 #include <p32xxxx.h>
 #include <plib.h>
@@ -68,18 +76,44 @@ int main(void) {
     PORTDbits.RD1 = 0;
     PORTDbits.RD2 = 0;
 
-    //using timer 2 for 1/2 a second delay of RX LED
+    //using timer 2 and 3 for 1/2 a second delay of RX LED
+    //PBclk = 80mhz, need 40,000,000 clocks for 1/2 second delay
+    //40,000,000 / 256 = 156250
+    //2^16 = 65536
+    //so we need to use a 32 bit timer as we don't want to change PBclk due to UART1
     TMR2 = 0;//0 out timer just in case
-    PR2 = 1;
 
-    //using timer 3 for 1/2 a second delay of TX LED
+    T2CONbits.TCKPS = 0b000; //1:1 prescaler
+    T2CONbits.T32 = 1; // 32 bit mode
+
+    PR2 = 40000000; // 1/2 second period
+
+    IFS0bits.T3IF = 0; // clear flag
+    IEC0bits.T3IE = 1; // enable
+
+    IPC3bits.T3IP = 0b010; // priority 2
+    IPC3bits.T3IS = 0; // subpriority 0
+
+    //using timers 4 and 5 for 1/2 a second delay of TX LED
+    TMR4 = 0;//0 out timer just in case
+
+    T4CONbits.TCKPS = 0b000; //1:1 prescaler
+    T4CONbits.T32 = 1; // 32 bit mode
+
+    PR4 = 40000000; // 1/2 second period
+
+    IFS0bits.T5IF = 0; // clear flag
+    IEC0bits.T5IE = 1; // enable
+
+    IPC5bits.T5IP = 0b001; // priority 1
+    IPC5bits.T5IS = 0; // subpriority 0
 
     //---end LED config---
 
     //---begin button config---
     //using button RC1
 
-    //using timer 4 for 15ms debounce checks
+    //using timer 1 for 15ms debounce checks
 
     //---end button config---
 
@@ -121,7 +155,7 @@ int main(void) {
     IFS0bits.U1TXIF = 0;
     IFS0bits.U1EIF = 0;
 
-    IPC6bits.U1IP = 0b011;
+    IPC6bits.U1IP = 0b111;
     IPC6bits.U1IS = 0b00;
 
     IEC0bits.U1RXIE = 1; //enable RX and TX interrupts
@@ -130,10 +164,19 @@ int main(void) {
     //---end Interrupt config---
 
     asm("ei");
+    T2CONbits.ON = 1; //start timer 2 for testing
+    //turn on RX LED for testing
+    PORTDbits.RD1 = 1;
+
+    T4CONbits.ON = 1; //start timer 4 for testing
+    //turn on TX LED for testing
+    PORTDbits.RD2 = 1;
 
     //IFS0bits.U1RXIF = 1; //manually set flag to test interrupts
     //IFS0bits.U1TXIF = 1;
     //IFS0bits.U1EIF = 1;
+
+    //IFS0bits.T3IF = 1;
 
     while (1);
 }
@@ -164,6 +207,8 @@ void UART1ISR()
             recieved = temp;
         }
         U1TXREG = recieved;
+        TMR2 = 0; //clear the timer
+        T2CONbits.ON = 1; // start the timer
     }
     else if(IFS0bits.U1TXIF == 1)
     {
@@ -173,6 +218,29 @@ void UART1ISR()
         IFS0CLR = 0x10000000; // clear transmit flag
         //write more to the U1 TX buffer
         U1TXREG = recieved;
+        TMR4 = 0; //clear the timer
+        T4CONbits.ON = 1; // start the timer
     }
 }
 
+//Timer2and3 ISR declaration
+void T23ISR()
+{
+    //clear T3IF flag atomically
+    IFS0CLR = 0x1000;
+    //turn off RX LED
+    PORTDbits.RD1 = 0;
+    T2CONbits.ON = 0; // stop the timer
+    TMR2 = 0; //clear the timer
+}
+//timer 4and5 ISR declaration
+void T45ISR()
+{
+    //clear T5IF flag atomically
+    IFS0CLR = 0x100000;
+
+    //turn off TX LED
+    PORTDbits.RD2 = 0;
+    T4CONbits.ON = 0; // stop the timer
+    TMR4 = 0; //clear the timer
+}
