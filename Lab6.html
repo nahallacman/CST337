@@ -1,0 +1,567 @@
+<!DOCTYPE html PUBLIC "-//w3c//dtd html 4.0 transitional//en">
+<!-- saved from url=(0053)http://www.cset.oit.edu/~lynnd/cst337/UartLab_f14.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    
+    <meta content="Microsoft Word 97" name="Generator">
+    <meta content="Mozilla/4.72 [en] (Win98; U) [Netscape]" name="GENERATOR">
+    <title>CST 321/337 Uart Lab</title>
+  </head>
+  <body>
+    <center>
+      <h2><font size="+1">CST 321/337 Lab 6<br>
+        </font></h2>
+    </center>
+    <center>
+      <h2><font size="+1">Asynchronous Serial I/O -- The PIC32MX UART</font></h2>
+    </center>
+    <hr width="100%">
+    <h4><b>Introduction</b></h4>
+    <div style="margin-left: 40px;">During this lab we will will
+      implement the interrupt driven service we talked about in class
+      for the PIC32 UART. We will write two programs to test the
+      functionality of the UART and of our service routine. The first
+      program will help to develop and test basic functionality and the
+      second program will build on the first. To keep things simple
+      (from an analysis perspective), we will just use single character
+      receive and transmit interrupts (interrupt on every character
+      received and transmitted).<br>
+    </div>
+    <ul>
+      <li>One ISR will be responsible for handling both UART receives
+        and transmits. (Don't attempt to use a service routine for
+        receives and the main routine for transmission or vice versa.)<br>
+      </li>
+      <li>The first program will cause the system to repetitively echo
+        back on the RS232 output line any characters it receives on the
+        RS232 input line. <span style="color: rgb(255, 0, 0);"></span>We
+
+
+
+        will test this program by connecting the RS232 lines to a Com
+        port on a PC running a terminal emulator program. When a
+        character, is pressed on the PC's keyboard, the ASCII code for
+        the character is transmitted out of the PC's UART on the line
+        connected to the PIC32 UART1's RX input. This received character
+        should then be repetitively sent back to the PC as fast as
+        possible. That is, if an "A" is typed on the keyboard, the
+        terminal emulator screen should begin to fill with "A"s. Before
+        the first character is received, the PIC32 system should not
+        transmit any characters. Your are required to do this up to
+        115.2k baud. <br>
+      </li>
+      <li>The second program will cause the PIC32 system to continually
+        store whatever it receives from the PC in an 8KiB buffer in the
+        on chip RAM. If more data is received than there is room in the
+        buffer, the new data should be discarded and an LED indicating
+        buffer overflow (which is not UART overrun) should be lit.&nbsp;
+        When the switch connected to RD10 (or RC1 on a version 1.5 AV32
+        board) is pressed, the program will re-transmit everything it
+        has buffered as well as clear the overrun LED. Don't assume that
+        new data will be not sent to your system during the transmit
+        phase -- the system must be able to receive and transmit
+        simultaneously. Once all buffered data has been transmitted, the
+        system will stop transmitting and wait for another RD10 switch
+        press in order to tell it to start transmitting again (assuming
+        more data has been received in the mean time). We will test this
+        program by connecting your system to the serial port on a PC,
+        and using a terminal emulator to perform ASCII text file uploads
+        and downloads. We will adjust the terminal emulator's transfer
+        settings so that characters are transmitted to your system at
+        115.2k baud with 8 data bits and no parity and we will set it to
+        use hardware (<span style="text-decoration: overline;">CTS</span>/<span style="text-decoration: overline;">RTS</span>) handshaking.
+        Also, to begin with, have the UART service routine toggle one or
+        both of two LEDS as appropriate each time it is entered. Let one
+        LED represent receive activity and another LED indicate transmit
+        activity (See Lab 1 for LED port pin assignments). <span style="color: rgb(255, 0, 0);"></span><span style="color:
+          rgb(255, 0, 0);"> </span>Use one of the LED's on the PIC32MX
+        starter kit board for the overrun LED.</li>
+      <li>Finally, arrange to have the receive or transmit activity LEDs
+        on solid (rather than toggling) when there is activity, and have
+        them be on for a minimum of one half second. We can implement
+        this with a timer for each LED. The UART service routine will
+        reset the appropriate TMRx register and then turn on the
+        appropriate LED. When the TMRx register matches its PRx register
+        1/2 second later (assuming no intervening UART interrupts reset
+        the TMRx register) the TMR interrupt service routine will turn
+        off the LED. It would be appropriate to have the TMRx service
+        routines at lower priority than the UART service routine. The
+        TMRx service routine can also turn off the timer (which avoids
+        the overhead of entering an interrupt service routine to turn
+        off an LED that was already turned off) but in this case, we
+        will need the UART service routine turn the timer on after
+        resetting its TMRx register.<br>
+      </li>
+    </ul>
+    <h4>Notes<br>
+    </h4>
+    <ol>
+      <li>The AV-32 board differs from the Explorer 16 board you used in
+        CST 204 in that it uses UART1 instead of UART2. This means that
+        TX is on RF3, RX is on RF2, U1RTS is on RD15 and U1CTS is on
+        RD14. <br>
+      </li>
+      <li>Arrange to have the system and peripheral clocks at 80MHz and
+        to reduce the number of wait states for RAM and Flash and turn
+        on the cache using SYSTEMConfig so the processor is operating as
+        fast as possible.</li>
+      <li>After determining what you need to do to set the baud rate
+        generator, you might want to temporarily arrange to output the
+        baud 16 clock on RD16 by setting the appropriate UEN bits in
+        order to be able to check the baud clock frequency using an
+        oscilloscope. Use the BRG and BRGH setting that gets you closest
+        to 115.2 Kbaud.<br>
+      </li>
+      <li>Remember that the interrupt flags (IFS0.U1RXIF and
+        IFS0.U1TXIF) need to be cleared <span style="text-decoration:
+          underline;">atomically</span> in the service routine, or the
+        system can fail. You can observe this by testing what happens
+        when you clear IFS0.U1RXIF non-atomically in the first program.<br>
+      </li>
+      <li>Note that breakpoints can be problematic when debugging
+        asynchronous communication. If the FRZ bit is on (default is on)
+        then the UART freezes, even mid transmission or reception. This
+        (freezing mid transmission) can confuse the receiver (the
+        terminal emulator in this case) and it may need to be reset. If
+        the UART doesn't freeze on breakpoint, you need to be aware that
+        you can enter a service routine, send a character via single
+        stepping, and have the character complete transmission (and set
+        TXIF) before the time you execute the next instruction (which
+        would not normally happen if the service routine was free
+        running). <br>
+      </li>
+      <li>It is a good idea to build up slowly to the full functionality
+        of the final program. In fact the first program is an
+        intermediate step to developing the second program. It allows
+        debugging interrupt control of transmissions and receptions in a
+        simple environment. <br>
+      </li>
+      <li>If you use TXEN to control when program 2 transmits data, be
+        aware that clearing TXEN turns TX pin to port control, and that
+        by default port pins are inputs. Undriven lines are more
+        susceptible to noise, which could potentially confuse the UART
+        in the PC. Or, if the undriven TX line happens to go to a low
+        level, then the PC's UART would see a break. To make sure this
+        doesn't happen, you should set up the port pin so it is an
+        output and driven high when the UART is not using it. <br>
+      </li>
+      <li>Program two requires you to use CTS/RTS handshaking. It is a
+        good idea to check the CTS input to make sure it is okay to send
+        data to the terminal emulator on the PC so we don't overrun it
+        if the PC becomes busy. Note that CTS is asserted low. We can
+        either check the CTS input in the transmit service routine
+        before sending more characters, or turn on CTS checking by the
+        UART hardware though the UEN bits in U1MODE. If this is done the
+        UART hardware will automatically suspend transmissions while CTS
+        is not asserted. This latter approach is probably more desirable
+        in an interrupt driven approach, because we don't want to get
+        stuck in a polling loop inside the service routine waiting for
+        CTS to be asserted. (We could have the main routine check to see
+        if transmissions have paused, and then wait for CTS to be
+        asserted upon which it could set TXEN to restart transmissions,
+        or we could possibly arrange for assertion of CTS to trigger an
+        interrupt that would restart transmissions with TXEN, but these
+        approaches are not needed since the hardware approach is
+        available in this case.) Turning on automatic control of CTS
+        also turns on automatic control of RTS. In this case, RTS is
+        asserted low whenever the receive buffer is not full, and when
+        OERR (overrun error) is not set -- that is whenever the UART is
+        ready to receive. (For this behavior to be true, the UART must
+        be in Flow control mode U1MODE.RTSMD = 0). For more information
+        on RTS and CTS, see section 21.11 of the Family Reference
+        manual. Your program should be fast enough so that RTS never has
+        to be cleared. We will check this pin on the scope to see if it
+        ever is.</li>
+      <li>Program two requires using the switch connected to RD10. This
+        switch reads low when pressed, and it is bouncy so it will need
+        to be debounced in software. This can be done by waiting until
+        the port shows 0 for two or three successive reads that are 15ms
+        apart. (Most "good" switches will bounce for no more than about
+        11ms.) Also note that we should check for the switch to return
+        to 1 for two successive reads 15ms apart before looking for 0
+        again to indicate that the next transmission should begin. We also
+        should not check for a switch press while transmitting since we
+        do not want the main routine to attempt to initiate transmission
+        a second time while the service routine is still transmitting
+        the buffer.<br>
+      </li>
+      <li>Arrange to find a way to time the <span style="text-decoration: underline;">latency</span> <span style="font-weight: bold;">and </span><span style="text-decoration: underline;">execution time</span> of
+        the second program's service routine (including prolog time in
+        the latency and epilog time in the execution time) on a <span style="text-decoration: underline;">character receive</span>.
+        One way to do this would be to temporarily have the main routine
+        set the RXIF flag. Set a stopwatch start on the set of the RXIF
+        and a stopwatch stop on the first instruction (after the prolog)
+        of the service routine. In a second run, set a stopwatch start
+        on the first instruction of the service routine and a stopwatch
+        stop on the instruction following the one that set the RXIF flag
+        in the main routine. Make sure the processor is operating as
+        fast as possible before collecting this data. Also collect the
+        data after a reset so that the uncached latency and execution
+        time will be obtained.<br>
+      </li>
+      <li>It is always a good idea to check the compatibility of RS232
+        connectors and pinouts whenever we connect two systems together.
+        See the figures below. Notice how flow control mode is used for
+        RTS and CTS and how outs are always connected to ins and
+        vice-versa.
+        <div style="page-break-after: always;">&nbsp;<br>
+        </div>
+        <br>
+        <div style="text-align: center;"><br>
+          <table style="margin-left: auto; margin-right: auto;
+            text-align: left;" border="0" cellpadding="2" cellspacing="2">
+            <tbody>
+              <tr style="font-weight: bold;" align="center">
+                <td colspan="3" rowspan="1" style="vertical-align: top;">DE-9
+Female
+
+
+
+
+                  Connector on AV-32 Companion Board<br>
+                </td>
+              </tr>
+              <tr>
+                <td style="vertical-align: top;">
+                  <div style="text-align: center;">DCE Pinout<br>
+                    <table style="text-align: left;" border="1" cellpadding="2" cellspacing="0">
+                      <tbody>
+                        <tr>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">1<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">2<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">3<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">4<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">5<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">6<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">7<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">8<br>
+                          </td>
+                          <td style="vertical-align: top; width: 30px;
+                            text-align: center;">9<br>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="text-align: center; vertical-align:
+                            bottom;"><br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;">PIC32<br>
+                            TX<br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;">PIC32<br>
+                            RX<br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;"><br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;">Gnd<br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;"><br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;">PIC32<br>
+                            CTS<br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;">PIC32<br>
+                            RTS<br>
+                          </td>
+                          <td style="text-align: center; vertical-align:
+                            bottom;"><br>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="vertical-align: top; text-align:
+                            center;"><br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;">Out<br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;">In<br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;"><br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;"><br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;"><br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;">In<br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;">Out<br>
+                          </td>
+                          <td style="vertical-align: top; text-align:
+                            center;"><br>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+                <td style="vertical-align: top;"><br>
+                </td>
+                <td style="vertical-align: top;"><img alt="" src="./Lab6_files/DE9F.gif" style="width: 221px; height: 84px;"><br>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <br>
+          <table style="margin-left: auto; margin-right: auto;
+            text-align: left;" border="0" cellpadding="2" cellspacing="2">
+            <tbody>
+              <tr style="font-weight: bold;" align="center">
+                <td colspan="3" rowspan="1" style="vertical-align: top;">DE-9
+Male
+
+
+
+
+                  cable Connector from PC</td>
+              </tr>
+              <tr>
+                <td style="vertical-align: top;">
+                  <div style="text-align: center;">DTE Pinout<br>
+                  </div>
+                  <table style="text-align: left;" border="1" cellpadding="2" cellspacing="0">
+                    <tbody>
+                      <tr>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">1<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">2<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">3<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">4<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">5<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">6<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">7<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">8<br>
+                        </td>
+                        <td style="vertical-align: top; width: 30px;
+                          text-align: center;">9<br>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">RxD<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">TxD<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">Gnd<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">RTS<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">CTS<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">In<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">Out<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">Out<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;">In<br>
+                        </td>
+                        <td style="vertical-align: top; text-align:
+                          center;"><br>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+                <td style="vertical-align: top;"><br>
+                </td>
+                <td style="vertical-align: top;"><img alt="" src="./Lab6_files/DE9M.gif" style="width: 221px; height: 84px;"><br>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </li>
+      <br>
+      <h4 style="margin-left: 40px;"><span style="font-weight: normal;">The
+following
+
+
+
+
+          figure shows the pinout and connections of the SN65c3232 modem
+          chip on the AV 32 board. This chip translates the 3.3V logic
+          levels out of the PIC32MX UART to RS232C line levels sent to
+          the PC and translates RS232C line levels received from the PC
+          to 3.3V logic levels for the PIC32MX UART. The pins are not
+          shown in order. The chip is a 16 pin SOIC, and only the left
+          side is visible and accessible just under the bottom right
+          edge of the PIC32 starter kit board. Of the pins that are
+          accessible, only pins 7 and 8 are usable. Note that these pins
+          are RS232C line level signals and so they <span style="font-weight: bold;">should not be connected to the
+            Logic Analyzer</span> (it doesn't handle negative voltages
+          well) but they can be probed with the oscilloscope. The
+          TTL(CMOS) level UART signals connected to the PIC32 are also
+          connected to the AV32 board's J6 connector. Pin assignments
+          for signals on the AV32 board's J5 and J6 connectors can be
+          found on the class web page at <a href="http://www.cset.oit.edu/~lynnd/cst337/AV32.html">AV32
+
+
+            J5 and J6 Pinout</a>. These signals are okay to monitor on
+          the logic analyzer.<br>
+        </span></h4>
+      <div style="text-align: center;"><img style="width: 464px; height:
+          342px;" alt="" src="./Lab6_files/AVUart.gif">&nbsp;<br>
+      </div>
+      <br>
+      <li>The second program will need to make use of a circular buffer.
+        For reference here is one approach to insert and remove in a
+        circular buffer.</li>
+      <br>
+      <ul>
+        <ul>
+          <li>h: (head pointer), points to where next item is to be
+            placed if the buffer is not full</li>
+          <li>t: (tail pointer), points to where next item can be
+            removed if the buffer is not empty</li>
+          <li>begin: points to the beginning of the buffer in memory</li>
+          <li>end: points to the end of the buffer in memory</li>
+          <li>num_items: number of items in the buffer</li>
+          <li>max: maximum number of items the buffer can hold</li>
+        </ul>
+      </ul>
+      <div style="margin-left: 40px;">Init: <br>
+        <div style="margin-left: 40px;">num_items = 0; h = t = top; end
+          = top + max - 1; <br>
+        </div>
+        <br>
+        Insert:<br>
+        <div style="margin-left: 40px;">if ( num_items &lt; max ) { //
+          buffer is not full<br>
+          <div style="margin-left: 40px;">*h = new_item;<br>
+            num_items++;<br>
+            h++;<br>
+            if( h &gt; end ) h = top; // make buffer circular<br>
+          </div>
+        </div>
+        <div style="margin-left: 40px;">}<br>
+          <br>
+        </div>
+      </div>
+      <div style="margin-left: 40px;">Remove:<br>
+        <div style="margin-left: 40px;">if (num_items &gt; 0) { //
+          buffer is not empty<br>
+          <div style="margin-left: 40px;">read_item = *t;<br>
+            num_items--;<br>
+            t++;<br>
+            if( t &gt; end) t = top; // make buffer circular<br>
+          </div>
+        </div>
+        <div style="margin-left: 40px;">}<br>
+        </div>
+      </div>
+      <div style="margin-left: 40px;"><br>
+      </div>
+      Note that there are two cases in which h == t, one when num_items
+      == max and the buffer is full and one when num_items = 0 and the
+      buffer is empty. Note that there are other algorithms for these
+      operations. One algorithm uses "full" and "empty" flags instead of
+      counting items. Another algorithm never lets h == t in which case
+      we never have to count the number of items, but this leaves one
+      entry in the buffer unusable.<br>
+    </ol>
+    <h4><b>Lab Report</b></h4>
+    A formal report is not required. Only the following items need be
+    included
+    <ol>
+      <li>Supply a <span style="text-decoration: underline;">well
+          documented</span> hard copy printout of both programs.</li>
+      <li>Email copies of these programs to the professor.<br>
+      </li>
+      <li>A brief conclusions section in which you:</li>
+      <ol type="a">
+        <li>Report on the successes, failures and difficulties you
+          encountered when performing both procedures in this
+          experiment.</li>
+        <li>Report the system clock and peripheral bus clock frequencies
+          you used.</li>
+        <li>Justify your choice of BRG and BRGH.<br>
+        </li>
+        <li>Report the latency and execution time associated with a
+          single character receive as measured in part 10 above.
+          Describe how you measured it.<br>
+        </li>
+        <li>Report on the performance of your second program in terms of
+          how fast (i.e. at what baud rate) it can receive&nbsp; and
+          send data. State how fast it actually performed as tested, and
+          how fast it should be able to theoretically perform based on
+          the latency and execution times measured in part 10 above.<br>
+        </li>
+      </ol>
+    </ol>
+  
+
+</body></html>

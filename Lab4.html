@@ -1,0 +1,346 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!-- saved from url=(0056)http://www.cset.oit.edu/~lynnd/cst337/MemInitLab_f14.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    
+    <title>Memory Allocation and Initialization</title>
+    <meta content="D.W. Lynn" name="author">
+  </head>
+  <body>
+    <h3 style="text-align: center;">CST 337 Lab 4 -- Memory Allocation
+      and Initialization<br>
+    </h3>
+    In this lab, we will examine some of the issues related to memory
+    allocation and initialization in the PIC32 and C. We will only need
+    to use the simulator for this project.<br>
+    <br>
+    <span style="font-weight: bold;">The Lab</span><br>
+    <br>
+    1) Start a new project, and enter the following code (note that you
+    should be able to "cut and paste"):<br>
+    <br>
+    // Memory Allocation and Initialization Test<br>
+    <br>
+    <span style="font-family: monospace;">#include &lt;xc.h&gt;</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">#include &lt;string.h&gt;</span><br style="font-family: monospace;">
+    <br style="font-family: monospace;">
+    <span style="font-family: monospace;">const char a[] = "CST 321 Lab
+      4";</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">char b[]
+      =&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Initialized Global Var";</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">const char c[] = "Initialized
+      Constant String";</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">char d[100]
+      =&nbsp;&nbsp;&nbsp; "Initialized String Array";</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">unsigned int gc = 0; //global
+      initialized to 0</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">unsigned int gd; //global
+      uninitialized</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">unsigned int ge = 0x45;
+      //global initialized to 0x45</span><br style="font-family:
+      monospace;">
+    <br style="font-family: monospace;">
+    <span style="font-family: monospace;">int main(void)</span><br style="font-family: monospace;">
+    <span style="font-family: monospace;">{</span><br style="font-family: monospace;">
+    <div style="margin-left: 40px; font-family: monospace;">unsigned int
+      ic = 0x0F1E2D3C;<br>
+      unsigned int id = 1;<br>
+      unsigned int ie;<br>
+      const unsigned int icf = 0x98765432;<br>
+      static unsigned int isf = 0x67452301;<br>
+      static const unsigned int iscf = 0xABCDEFFE;<br>
+      <br>
+      unsigned long long lc = 0x4B5A69788796A5B4LL;<br>
+      static const unsigned long long lcc = 0xFEDCBA9876543210LL;<br>
+      unsigned long long ld = 1;<br>
+      unsigned long long le;<br>
+      <br>
+      char la[] = "Local String Test";<br>
+      <br>
+      ie = 0x19283746;<br>
+      ic = icf;<br>
+      ic = isf;<br>
+      ic = iscf;<br>
+      id = gc;<br>
+      <br>
+      le = 0x0123456789ABCDEFLL;<br>
+      <br>
+      strcpy(d,b);<br>
+      strcpy(d,a);<br>
+      strcpy(d,c);<br>
+      strcpy(b,c);<br>
+    </div>
+    <span style="font-family: monospace;">}</span><br style="font-family: monospace;">
+    <br>
+    2) Build and (if necessary) debug the code. Open the Watch window
+    and add the <span style="font-family: monospace; font-weight:
+      bold;">sp</span>, <span style="font-family: monospace;
+      font-weight: bold;">fp </span>and <span style="font-family:
+      monospace; font-weight: bold;">gp </span>registers. (Note that
+    the <span style="font-family: monospace; font-weight: bold;">fp </span>register
+
+
+
+
+
+
+
+
+
+    is also known as <span style="font-family: monospace; font-weight:
+      bold;">s8</span>). (Note that I have seen some debug sessions
+    where the watch window wasn't updating registers properly. In this
+    case, the "CPU" PIC memory view will provide the values of fp, sp
+    and gp). Then add all of the global and local variables defined in
+    the code. To add the locals, the focus will have to be inside the
+    main routine. Adding them in the order they were declared will
+    probably help, as will ensuring that the properties of the string
+    symbols in the watch window is ASCII. Make sure the debugger is set
+    to reset and debug startup at the reset vector. Open the PIC Memory
+    Views &gt; Data Memory window, right click and select "Fill Memory
+    ..." to fill all of RAM (0x0000.0000 -- 0x0000.7FFF) with
+    0x55555555. (Also selecting "Keep Address Range" may save you some
+    time later if you have to repeat this step.) Then, reset the device.<br>
+    <br>
+    3) Did resetting the device change any of RAM? (Check this in the
+    Data Memory Window). Record and report the virtual addresses of the
+    global variables, and their initial values. (<span style="color:
+      rgb(255, 0, 0);">You may have to do a "Step Into" once do get the
+      watch window to update and then Reset ag</span><span style="color:
+      rgb(255, 0, 0);">ain</span>). In what memory segment (Kuseg, Kseg0
+    or Kseg1 and Program Flash, Boot Flash or Data Ram (see Figure 3.1
+    in the Family Reference Manual)) do the global constants and the
+    global variables fall?<br>
+    <br>
+    4) What does the simulator say the initial values of the <span style="font-family: monospace; font-weight: bold;">sp</span>, <span style="font-family: monospace; font-weight: bold;">fp </span>and
+    <span style="font-family: monospace; font-weight: bold;">gp </span>are?
+
+
+
+
+
+
+
+
+
+    (I do not believe these are actually initialized in the processor
+    itself -- after the lab is completed, you can check using actual
+    hardware if you wish.) What is the address of the <span style="font-weight: bold; font-family: monospace;">pc </span>at
+    this point (just after reset)? (Look at the top line in MPLAB window
+    for <span style="font-family: monospace;">pc</span>). Check that
+    the pc reads 0xBFC0000. What segment of memory is this address in
+    (KUseg, Kseg0 or Kseg1 and Program Flash, Boot Flash or Data Ram)?
+    What is this address the address of?<br>
+    <br>
+    5) Use the "Step Into" key to step (about 13 times) while watching
+    the the values of the <span style="font-family: monospace;
+      font-weight: bold;">sp </span>and <span style="font-family:
+      monospace; font-weight: bold;">gp </span>registers. The <span style="font-family: monospace; font-weight: bold;">sp </span>will
+    change twice then the <span style="font-family: monospace;
+      font-weight: bold;">gp </span>register will change twice. Record
+    the final values of each of the <span style="font-family:
+      monospace; font-weight: bold;">sp </span>and <span style="font-family: monospace; font-weight: bold;">gp </span>registers.
+
+
+
+
+
+
+
+
+
+
+    What segment of memory is each of these registers pointing to
+    (KUseg, Kseg0 or Kseg1 and Program Flash, Boot Flash or Data Ram)? <br>
+    <br>
+    6) Set a breakpoint on the opening brace at the beginning of main()
+    (before any code is executed in main). Open the disassembly window
+    and set the breakpoint on the first assembly instruction in main if
+    it is not already there. Run to that point. Did <span style="font-family: monospace; font-weight: bold;">sp </span>or <span style="font-family: monospace; font-weight: bold;">gp </span>change?
+
+
+
+
+
+
+
+
+
+    Which global values changed? In particular, what value was <span style="font-family: monospace; font-weight: bold;">gd </span>initialized
+
+
+
+
+
+
+
+    to, even though the code did not request this? What caused all these
+    variables to change?<br>
+    <br>
+    7) The local variables in main will no longer be "Out of scope".
+    Some of them will already have their initial values. What is common
+    about the type declarations of these local variables that are
+    already initialized? Of these variables, some fall in Kseg0 Program
+    Flash, and some in Kseg1 Data Ram. What is different about the type
+    declarations of the variables that fall in Program Flash, and those
+    that fall in Data Ram? When do you think each of the values were
+    initialized? <br>
+    <br>
+    8) Click in the disassembly window and single step machine
+    instructions until some of the local variables addresses change to
+    different addresses. What register being assigned a value caused
+    these addresses to be changed? What is another name for this
+    register? Why did changing its value change the addresses the
+    debugger determines for these variables? (Look at the disassembly to
+    see how <span style="font-family: monospace; font-weight: bold;">ic
+    </span>(and others of these variables) are being referenced).<br>
+    <span style="color: rgb(255, 0, 0);">Skip this question, Apparently
+      MPLAB changed how the debugger works this year</span>.<span style="color: rgb(255, 0, 0);"> In previous years the local
+      variables did not get accurate addresses until after the frame
+      pointer (fp or s8) was assigned since they are all referenced as
+      offsets from the fp.</span><br>
+    <br>
+    9) Check what addresses all of these non-static (also known as
+    "automatic") local variables have. What registers have values close
+    to these addresses? How would we commonly refer to this section of
+    RAM? Does it surprise you that even the (non-static) const local
+    variables reside in RAM? What does "constant" mean in this case?<br>
+    <br>
+    10) Looking at the code, determine where the <span style="font-weight: bold;"><span style="color: rgb(255, 0, 0);">data
+
+
+
+
+
+        used to initialize</span></span> <span style="font-family:
+      monospace; font-weight: bold;">ic </span>is stored? (Note that
+    you have to be careful when decoding the address from the
+    disassembly listing, as sometimes part of the address is given in
+    hex and part in decimal.) In what memory segment is this (KUseg,
+    Kseg0 or Kseg1 and Program Flash, Boot Flash or Data Ram)?<br>
+    <br>
+    11) At what address is the <span style="font-weight: bold;"><span style="color: rgb(255, 0, 0);">data used to initialize</span></span>&nbsp;
+
+
+
+
+
+    <span style="font-family: monospace; font-weight: bold;">la </span>stored?
+
+
+
+
+
+    (Note that you have to be careful when decoding the address from the
+    disassembly listing, as sometimes part of the address is given in
+    hex and part in decimal.) In what memory segment is this (KUseg,
+    Kseg0 or Kseg1 and Program Flash, Boot Flash or Data Ram) is this?
+    In the appropriate memory window, right click and select "Go to.."
+    to go to this address. Verify that the value stored at this address
+    is correct. Single step through the machine code that initializes <span style="font-family: monospace; font-weight: bold;">la </span>while
+
+
+
+
+
+
+    observing its value in the watch window. Is local string
+    initialization this way a good idea? Would it be better for us to
+    have used strcpy() to initialize <span style="font-weight: bold;
+      font-family: monospace;">la</span>? <br>
+    <br>
+    12) Give the addresses for the initializers (the data used to
+    initialize) for the non-constant global variables <span style="font-family: monospace; font-weight: bold;">b[]</span>, <span style="font-weight: bold; font-family: monospace;">d[]</span> and
+    <span style="font-family: monospace; font-weight: bold;">ge</span>.
+    You may have to search around a bit in the Execution memory window.
+    If you are observant you may already have noticed them. In what
+    memory segment do they fall (KUseg, Kseg0 or Kseg1 and Program
+    Flash, Boot Flash or Data Ram)? Why do you suppose that the
+    addresses for the global strings <span style="font-family:
+      monospace; font-weight: bold;">a[]</span>, the <span style="font-family: monospace; font-weight: bold;">b[]</span> <span style="font-weight: bold;"> initializer</span>, <span style="font-family: monospace; font-weight: bold;">c[]</span> and
+    the <span style="font-family: monospace; font-weight: bold;">d[]</span>
+    <span style="font-weight: bold;">initializer </span>are not
+    sequential (following the order in which they were declared)?<br>
+    Which approach is more memory efficient for strings like <span style="font-family: monospace; font-weight: bold;">a[]</span> and
+    <span style="font-family: monospace; font-weight: bold;">b[]</span>;
+    to use the const declaration in as in <span style="font-family:
+      monospace; font-weight: bold;">a[]</span> or not as in <span style="font-family: monospace; font-weight: bold;">b[]</span>?
+    Why? (Hint: How much total memory (Ram and Flash) is needed for <span style="font-family: monospace; font-weight: bold;">b[]</span> and
+    the data used to initialize it?) <br>
+    <br>
+    13) Set a breakpoint on the last strcpy() in the main program. Run
+    to, then step over it while observing the global strings in the
+    watch window. What is the problem with this strcpy? Where did the
+    extra data go? What determines the end of a string as far as
+    strcpy() is concerned? How does the debugger determine how long
+    strings are for purposes of displaying them in the watch window?
+    What would happen if we added a strcpy(d, b) following the last
+    strcpy()? Try it, see what happens, and then <span style="font-weight: bold;">remove the added strcpy(d,b)</span>.<br>
+    <br>
+    14) Record the starting and ending addresses of main from the
+    disassembly window. <br>
+    <br>
+    15)&nbsp; Create a map file for your project through Project
+    Properties &gt; xc32-ld &gt; Diagnostics &gt; Generate map file then
+    supply an appropriate name. Rebuild the code and then open the
+    resulting map file that was stored in your project directory. Scroll
+    down to the "Microchip PIC32 Memory-Usage Report" section of the map
+    file. From the information in this section (don't go beyond the
+    "Discarded input sections" heading), create one table for Ram and
+    one for Flash showing the starting addresses and relative positions
+    of each of the sections in the memory usage report. The RAM table
+    should include .data, .sdata, .sbss, heap and stack sections. The
+    Flash table should include .text, .rodata, .dinit, .reset,
+    .bev_excpt and .app_excpt sections.&nbsp; For consistency, put low
+    numbered addresses on the top of the tables. Place Kseg1 addresses
+    in the table based on their corresponding Kseg0 addresses (i.e.
+    Kseg1 address 0xBFC00000 maps to the same physical address as Kseg0
+    address 0x9FC00000) but indicate that the section is accessed
+    through Kseg1. <br>
+    On or next to each of these sections show the address of each of the
+    global constants and variables, static constants and variables, and
+    the address of any data used to initialize another variable for all
+    variables (except those whose initializer is in the main program
+    itself). For the data used to initialize, also list the name of the
+    variable it is used to initialize. Also indicate on the table the
+    starting and ending address of main, and the address of the <span style="font-weight: bold;">top </span>of the stack (stack will be
+    the bottom).<br>
+    As a check, here is a list of the variables that need to appear <span style="font-weight: bold;">in</span> the tables: <span style="font-weight: bold; font-family: monospace;">a</span>, <span style="font-family: monospace; font-weight: bold;">b</span>, <span style="font-family: monospace; font-weight: bold;">c</span>, <span style="font-family: monospace; font-weight: bold;">d</span>, <span style="font-family: monospace; font-weight: bold;">gc</span>, <span style="font-family: monospace; font-weight: bold;">gd</span>, <span style="font-family: monospace; font-weight: bold;">ge</span>, <span style="font-family: monospace; font-weight: bold;">isf</span>, <span style="font-family: monospace; font-weight: bold;">iscf</span>,
+    and <span style="font-family: monospace; font-weight: bold;">lcc</span>.
+    Also, show the addresses of the initializers for <span style="font-family: monospace; font-weight: bold;">b</span>, <span style="font-family: monospace; font-weight: bold;">d</span>, <span style="font-family: monospace; font-weight: bold;">ge</span>, <span style="font-family: monospace; font-weight: bold;">isf</span>, <span style="font-family: monospace; font-weight: bold;">la</span>, and
+    <span style="font-family: monospace; font-weight: bold;">lc</span>.
+    <br>
+    It might be a good idea to show your tables to the professor before
+    turning then in to make sure they are in the right format and have
+    all the needed elements.<br>
+    <br>
+    16) Where is the strcpy() routine kept in memory?<br>
+    <br>
+    17) From their addresses, work out what the purpose of the .reset,
+    .bev_excpt .and .app_excpt sections are.<br>
+    <br>
+    18) Why are all the elements in Flash (except .reset and .bev_excpt)
+    referenced through KSEG0 and all of the elements in RAM referenced
+    through KSEG1?<br>
+    <br>
+    19) Add a call to malloc (void * malloc(size_t size)) to allocate
+    enough memory in which to copy one of the strings. Use strcpy() to
+    carry out the copy, then free the allocated space with free (void
+    free(void * ptr)). You will have to turn on dynamic memory
+    allocation. This is done by setting the Heap size to 512 through
+    Project Properties &gt; xc32-ld &gt; General.&nbsp; Debug your code
+    to make sure it works. Use the debugger to determine at what address
+    this heap memory was allocated. Also add a notation to your memory
+    map indicating where the for the memory for the heap would be
+    allocated. if it was present. Why do the addresses of a and c change
+    after making this code change?<br style="color: rgb(255, 0, 0);">
+    Check the map file for the bottom of the stack segment. Did it move?<br>
+    <br>
+    <br>
+    <span style="font-weight: bold;">The Report<br>
+      <br>
+    </span>Include a print out of the final version of your code and the
+    data and answers to the questions posed in steps 3-19 above.<span style="font-weight: bold;"><br>
+    </span><br>
+  
+
+</body></html>

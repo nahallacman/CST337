@@ -1,0 +1,737 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!-- saved from url=(0059)http://www.cset.oit.edu/~lynnd/cst337/CInterruptLab_f14.htm -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    
+    <title>Interrupts in C</title>
+    <meta content="D.W. Lynn" name="author">
+  </head>
+  <body>
+    <div style="text-align: center;">
+      <h3 style="text-align: center;">CST 337 Lab 3 -- Interrupts in C<br>
+      </h3>
+      <div style="text-align: left;">In this lab we will learn how to
+        handle interrupts in C. Before we can handle interrupts in the
+        PIC32MX, some things will have to be configured.<br>
+        <br>
+        <span style="font-weight: bold;">The Lab<br>
+          <br>
+        </span>1) Open a new project. Create a main program that doesn't
+        do anything in particular except increment a variable or
+        something. Set up the target board with the Real ICE debugger.
+        (Remember to power up the RealICE before the target board). <span style="color: rgb(255, 0, 0);">Set the debugger settings</span>
+        (Tools &gt; Options &gt; Embedded &gt; Generic Settings) <span style="color: rgb(255, 0, 0);">"Debug Startup" and "Reset @"
+          both to "Reset vector"</span> so that the Reset will <span style="text-decoration: underline;">not</span> bring the
+        debugger to the beginning of main but rather to the beginning of
+        the C startup code -- crt.o. This means that the debugger will
+        stop just after the processor resets. <br>
+        <div style="margin-left: 40px;">a) Reset and then set up watches
+          as needed, or a CPU registers window (Window &gt; PIC Memory
+          Views &gt; CPU) with bitfield mouseover in order to record
+          values for the following fields in the "After Reset" line of
+          the following table: <br>
+        </div>
+        <br>
+        <table style="text-align: left;" border="1" cellpadding="2" cellspacing="0">
+          <tbody>
+            <tr>
+              <td colspan="1" rowspan="2" style="vertical-align: top;"><br>
+              </td>
+              <td colspan="6" rowspan="1" style="vertical-align: top;
+                text-align: center;">Status<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">IntCtl<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">Cause<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">INTCON<br>
+              </td>
+              <td colspan="1" rowspan="2" style="vertical-align: top;
+                text-align: center;">&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;
+                Ebase&nbsp; &nbsp;&nbsp; &nbsp; <br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top; text-align: center;">BEV<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">IPL<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">UM<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">ERL<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">EXL<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">IE<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">VS<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">IV<br>
+              </td>
+              <td style="vertical-align: top; text-align: center;">MVEC<br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">After Reset<br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">At beginning of main<br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">No apparent reset value<br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+            </tr>
+            <tr>
+              <td style="vertical-align: top;">No defined reset value<br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+              <td style="vertical-align: top;"><br>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <span style="color: rgb(255, 0, 0);"></span><br>
+        <div style="margin-left: 40px;">b)&nbsp; Set a breakpoint on the
+          first executable line in main. Run to that point and record
+          information for the "At beginning of main" line.<br>
+          c) Also put your "After Reset" values in the table on the
+          front desk in the lab. Once enough students have entered their
+          data you can use this information to see which fields appear
+          to have no defined reset value. Put X's in the "No apparent
+          reset value" line for these fields.<br>
+          d) Use the Family Reference manual to determine which of the
+          above fields do in fact have no defined POR (power on reset)
+          value. Put U's in the "No defined reset value" line for these
+          fields.<br>
+          e) The ERL bit in Status will appear to have a POR value of 1
+          when the manual says it doesn't. Attempt to explain the
+          discrepancy.<br>
+          f) Based on your "after reset" values above, what <span style="text-decoration: underline;">interrupt mode</span> is
+          the processor core <span style="color: rgb(255, 0, 0);"> </span>in
+
+
+
+
+          immediately after reset? How do you know? <br>
+          g) Based on your "after reset" values above, is the processor
+          in Kernel or User mode immediately after reset? How do you
+          know?<br>
+          h) What <span style="text-decoration: underline;">interrupt
+            mode</span> is the <span style="font-weight: bold;">processor
+            core</span> in after crt.o runs? How do you know?<br>
+          i) Is the processor in Kernel or User mode immediately after
+          crt.o runs? How do you know?<br>
+          j) What is the processor priority at the beginning of main?
+          Why is this important to know?<br>
+          k) What,<span style="color: rgb(255, 0, 0);"> </span>beyond
+          what has already been done by crt.o,<span style="color:
+            rgb(255, 0, 0);"> </span>will need to be done in main to
+          enable interrupts<span style="color: rgb(255, 0, 0);"></span>
+          to run in single vector mode? <br>
+          l)&nbsp;What,<span style="color: rgb(255, 0, 0);"> </span>beyond
+
+
+
+
+
+          what has already been done by crt.o,<span style="color:
+            rgb(255, 0, 0);"> </span>will need to be done in main to
+          enable interrupts<span style="color: rgb(255, 0, 0);"></span>
+          to run in multi-vector mode?<br>
+        </div>
+        <br>
+        Record the filled in table and your answers to parts e through l
+        for your report.<br>
+        <br>
+        2) Hopefully, you realized that you will have to either set or
+        leave clear INTCON.MVEC (if you want single or multi-vector
+        modes respectively.) and then enable interrupts. These are
+        relatively easy to do yourself. Or you can use a predefined
+        function. Take a look at the <span style="font-weight: bold;">INTEnableSystemMultiVectoredInt(
+
+
+
+
+
+
+
+
+
+
+          )</span> function in C:\Program
+        Files\Microchip\xc32\v1.32\pic32-libs\peripheral\int\source\int_enable_mv_int_lib.c.
+
+
+
+
+
+
+
+        Be careful not to change it! (To use this peripheral library
+        function in your code you will have to include &lt;plib.h&gt;.)<br>
+        <br>
+        What does this function assume? What bits does it set? Record
+        your answers for your report.<br>
+        <br>
+        Note that it sets a bit that it does not need to. Ordinarily one
+        would expect a library routine to take only care of things not
+        already set up in initialization. Whenever you use library
+        routines you need to be very aware of what it assumes, what it
+        does and what side effects it might have! You also have to be
+        aware of what the startup routines do.<br>
+        <br>
+        3) We will also need ways to set interrupt priority and sub
+        priority in the appropriate IPCx register, and to (atomically)
+        set and clear IF bits and IE bits.<br>
+        <span style="font-weight: bold;">m(xx)setIntPriority(priority)</span>
+        is a set of macros that sets the priority for a selected
+        peripheral specified in place of the (xx) . So <span style="font-weight: bold;">mT2setIntPriority(5)</span> would
+        set the interrupt priority for Timer2 to 5. The flags used to
+        replace (xx) are usually fairly obvious. These macros and the
+        (xx) flags can be found in the C32 Peripheral Library Guide
+        (pdf) in the Interrupt Macros section (Table 8-2). This file can
+        be found on the class webpage. The pertinent macros are:<br>
+        <br>
+        <span style="font-weight: bold;">m(xx)SetIntPriority(priority)<br>
+          m(xx)SetIntSubPriority(subpriority)</span><br style="font-weight: bold;">
+        <span style="font-weight: bold;">m(xx)ClearIntFlag()</span><br style="font-weight: bold;">
+        <span style="font-weight: bold;">m(xx)IntEnable(enable) 0=
+          disable, 1 = enable</span><br style="font-weight: bold;">
+        <span style="font-weight: bold;"><br>
+        </span>Note that there is no macro for m(xx)setIntFlag as this
+        is not often done. The function of most of these macros can
+        easily be done directly yourself, though you would have to look
+        up which IFSx, IECx, and IPCx register and bits are needed. <br>
+        <br>
+        Check out the source for mT2ClearIntFlag() and
+        mT2IntEnable(enable) in
+        ...\xc32\v1.32\pic32-libs\include\peripheral\legacy\int_3xx_4xx_legacy.h.
+
+
+
+
+
+
+
+
+        Are the IFSx and IECx bits set or cleared atomically? How do you
+        know?<br>
+        Record your answers for your lab report.<br>
+        <br>
+        4) Section 3.3 of the C32 C Compiler Guide in the C32 section of
+        Help topics and in the XC32 docs (...\xc32\v1.32\docs\MPLAB XC32
+        User Guide.pdf) provides insight on how to prototype and define
+        interrupt service routines. One approach uses pragmas<br>
+        <div style="margin-left: 40px;"><span style="font-weight: bold;">#pragma
+interrupt
+
+
+
+
+
+
+
+
+
+
+            foo IPL4 vector 8</span><br style="font-weight: bold;">
+          <span style="font-weight: bold;">void foo (void)<br>
+            <br>
+          </span><span style="font-weight: bold;"></span></div>
+        <span style="font-weight: bold;"> </span>Another approach uses
+        an interrupt and vector attributes in the function prototype for
+        the interrupt service routine:<br>
+        <div style="margin-left: 40px;"><span style="font-weight: bold;">void
+__attribute__
+
+
+
+
+
+
+
+
+
+
+            (( interrupt(IPL4),vector(8) )) foo (void)<br>
+            <br>
+          </span></div>
+        Both of these approaches let the compiler know that foo is an
+        interrupt service routine that is not passed any arguments and
+        does not return any arguments and also informs the compiler of
+        the interrupt priority level of the routine and where in the
+        vector table a dispatch function targeting the handler should be
+        placed. If IPL7 is specified, the compiler assumes that the
+        service routine will be run at priority 7, and so it will use a
+        shadow register set and therefore does not need to save any
+        registers. Otherwise, the compiler will save and restore only
+        the registers that the service routine uses. The IPLn specifier
+        will generate code to set the IPL field in the CP0 register
+        Status to the fixed value n. Since IPL7 assumes the shadow
+        register set, it is clear that the IPLn specifier assumes a
+        3xx/4xx PIC32 processor is being used, but as we saw in class,
+        writes the prolog and epilog so that the code would be
+        compatible with a 4xx/5xx/6xx processor. We must be careful to
+        make sure that the actual priority of the interrupt set in the
+        EIC IPCx register matches n in the IPLn specifier or we can have
+        incorrect nesting of interrupts, which could result in a stack
+        overflow and eventually a bus-error exception. Another IPL
+        specifier option is RIPL. If we use this specifier, the compiler
+        will put code in the prolog to determine the interrupt's
+        requested priority from the Cause CP0 register (Cause.RIPL). As
+        we saw in class this adds a few instructions to the prolog, but
+        would not have the problem that a mismatched IPLn does. This is
+        the only safe approach if we have a situation where the
+        programmer wants to dynamically change an interrupt's priority
+        by modifying IPCx registers <span style="font-style: italic;">during</span>
+        runtime (rather than just at initialization).<br>
+        <br>
+        Other options for IPL specifiers which are appropriate to
+        5xx/6xx/7xx processors are:<br>
+        <ul>
+          <li>IPLnSRS -- which sets the Status.IPL to n and assumes that
+            priority level n is the one that gets the shadow set. <br>
+          </li>
+          <li>IPLnSOFT -- which sets the Status.IPL to n and saves and
+            restores any registers the service routine uses (i.e. uses
+            software context saving). <br>
+          </li>
+          <li>IPLnAUTO -- which sets the Status.IPL to n and looks at
+            the SrsCtl CP0 register to determine if we have the shadow
+            set or need to use software to save and restore any
+            registers the service routine uses.<br>
+          </li>
+        </ul>
+        Setting the vector to 8 in the above example associates the
+        interrupt handler with vector 8 (the vector for the Timer2
+        interrupt). This means that code to jump to the interrupt
+        handler will be placed in the 8th entry of the vector table. The
+        8 in both the pragma and attribute statements can be replaced
+        with a comma separated list of vector numbers which implies that
+        interrupts from multiple vector sources would be handled by this
+        interrupt handler. In the #pragma statement, if 8 is replaced
+        with @8, then the interrupt handler itself is placed in the
+        vector table itself at the 8th entry. (Note that the setting of
+        IntCtl.VS is probably not large enough to allow this in our
+        case). This function is accomplished in the attribute statement
+        by replacing vector(8) with at_vector(8).<br>
+        <br>
+        I personally prefer the #pragma approach since it uses fewer
+        underscores and brackets, but you can use what you like. Section
+        13.3.3 of the XC32 Compiler User's Manual describes some macros
+        that can be used to make the __attribute_ approach simpler.<br>
+        <br>
+        <span style="color: rgb(255, 0, 0);"></span>5) We will write
+        some code to handle interrupts from Timer2. Set up the system
+        and peripheral clocks for 72MHz operation. To do this you will
+        have to change the config pragma for FPBDIV to DIV_1. Use the <span style="font-family: monospace;">SYSTEMConfig(72000000L,
+          SYS_CFG_WAIT_STATES | SYS_CFG_PCACHE)</span>function
+        introduced in the last lab to remove unnecessary wait states and
+        turn on caching. Set up timer 2 with a 1:1 prescale, to roll
+        over and generate an interrupt every 512 counts (i.e. <span style="color: rgb(255, 0, 0);">set PR2 to 511</span>).&nbsp;
+        Add code to your main routine to initialize the interrupt system
+        for multi-vectored interrupts . Note that you need to:<br>
+        <ul>
+          <li>First, turn off timer 2 and clear its interrupt flag.</li>
+          <li>Then:<br>
+          </li>
+          <ul>
+            <li>set up Multi-Vector mode, <br>
+            </li>
+            <li>establish the priority of the service routine (use <span style="font-weight: bold;">priority 4</span> and an<span style="font-weight: bold;"> IPL4</span> specifier).<br>
+            </li>
+            <li>globally enable interrupts (ei)<span style="font-weight:
+                bold;"></span><br>
+            </li>
+          </ul>
+        </ul>
+        <ul>
+        </ul>
+        <div style="margin-left: 40px;"> <span style="font-weight:
+            bold;">before </span>enabling the timer 2 interrupt
+          (setting the appropriate IECx flag) and starting timer 2. <br>
+          <br>
+        </div>
+        The order of the above items may vary depending on the functions
+        you use to do these operations. Note that
+        INTEnableSystemMultiVectoredInt( ) not only sets multi-vector
+        mode, it also does an ei. Note that the PIC32MX automatically
+        clears the IFSx, IECx and TxCON registers on power on reset (and
+        Status.IE is cleared by the time we hit main), so strictly
+        speaking, some of the above operations are not needed and the
+        order of the others does not matter. But not all processors will
+        do this for you, so it is good practice to get in the habit of
+        following the above order which only assumes that interrupts are
+        disabled on reset. <span style="font-weight: bold;">You will be
+          graded on this point.</span><br>
+        The general principle is to (early in the code) turn off devices
+        that can generate interrupts and may have been on (not cleared
+        at reset, or on from previous runs) and clear any pending
+        interrupts that may have not been reset from previous runs
+        before enabling individual interrupts and starting the device
+        that can generate them. This way, the first interrupt comes from
+        the intended event, not from previous events.<br>
+        <br>
+        Have the timer 2 service routine increment a counter (a global
+        int), atomically clear the timer 2 interrupt flag and exit. Have
+        the main routine just execute a <span style="font-family:
+          monospace;">while(1);</span> loop. Note that you can use
+        macros inside your service routine, <span style="font-weight:
+          bold;">but do not make any calls to functions inside your
+          service routine.</span> Function calls inside a service
+        routine will require the prolog and epilog to save and restore <span style="font-weight: bold;">all </span>registers!<span style="color: rgb(255, 0, 0);"><br>
+        </span> <br>
+        6) Build, program and debug your code. You can set a watch on
+        the counter and verify that it is incrementing up. Also set a
+        breakpoint on the first C instruction in the service routine in
+        order to verify that the service routine is being entered. When
+        this breakpoint is triggered, read the Timer 2 value and record
+        it for your report. This gives you an idea of the <span style="font-style: italic;">latency</span> of the interrupt
+        since the interrupt was triggered when the timer rolled over to
+        0. Demonstrate your running code to the professor. Reset the
+        processor and then record the latencies for the first 10 times
+        the service routine is entered. explain why the latency is
+        different between the first time the service routine is entered
+        and the subsequent times. Why might we not observe this behavior
+        in other systems with more interrupts, or more extensive code
+        running in the main routine?<br>
+        <br>
+        7) Using the disassembly view, determine what address (virtual)
+        your interrupt handler is at. Using Ebase, IntCtl.VS and the
+        vector number, determine what the address of the vector is. Open
+        a Window &gt; PIC Memory Views &gt; Execution Memory (Code view)
+        window. Right click on the window contents (anywhere except the
+        leftmost column which also sets a breakpoint) and select "Go
+        To". then select memory region and then select "Address". Now,
+        supply the address of the vector you computed above. Determine
+        what instructions are at the vector (it helps if the window
+        format is "code"). Verify that the vector is jumping to your
+        interrupt handler. Include your work and results for this part
+        in your report.<br>
+        <br>
+        8) Clear all breakpoints, then set a breakpoint on the code at
+        the interrupt vector itself. This can be done from the Execution
+        Memory View (as noted above). Reset, then Run your code and
+        determine the interrupt latency to this point. Record this
+        latency for your report. Determine the difference between this
+        latency and the first latency you found in part 6. How can you
+        account for the difference between this latency and that
+        recorded in part 6? What does the latency to this point
+        represent? Run again. What is the latency to the breakpoint the
+        second time? Why is it different from the first time?<span style="font-weight: bold;"><span style="color: rgb(255, 0,
+            0);"><br>
+            Note that it appears that having multiple breakpoints set
+            for this part could change timer readings, so make sure to
+            have only one breakpoint set.<br>
+            <br>
+          </span></span>9) Clear all breakpoints, then set a breakpoint
+        on the opening curly brace of the service routine and one on the
+        closing curly brace of the service routine. Using the
+        disassembly view, determine where these breakpoints are actually
+        set (relative to the start or end of the prolog or epilog).
+        Record this for your report.<span style="font-weight: bold;"><span style="color: rgb(255, 0, 0);"><br>
+          </span></span><br>
+        10) Using the disassembly view determine what processor
+        registers (not SFRs) are saved and restored by the interrupt
+        handler's prolog and epilog. List them in your report.<br>
+        <br>
+        11) Set a breakpoint just after the last C instruction in the
+        service routine and record the timer value at this point for
+        both the first and second service routine entries after reset.
+        Remove that breakpoint and set one on the eret instruction in
+        the epilog and record the timer value at this point for both the
+        first and second service routine entries after reset. What is
+        the execution time of the epilog? Record your data and answer
+        for your report.<br>
+        <br>
+        12) Change the handler's <span style="font-weight: bold;">priority
+
+
+
+
+
+
+
+
+
+
+          to 7</span> and the&nbsp; <span style="font-weight: bold;">IPL
+
+
+
+
+
+
+
+
+
+
+          specifier to 7</span> (the compiler will warn you that you
+        should use IPL7SRS in the future), and repeat steps 6, 8 and 10.
+        What differences do you observe and what accounts for them?
+        Record your answer for your report.<br>
+        <br>
+        13) Change the Timer 2 handlers priority back to <span style="font-weight: bold;">priority 4</span>, <span style="font-weight: bold;">IPL4</span>. Add code to have Timer
+        3 generate an interrupt every 1000 counts (otherwise use the
+        same settings as for Timer2). Note that to get 1000 counts we
+        will <span style="color: rgb(255, 0, 0);">set PR3 to 999</span>.
+        Let this interrupt be handled at a lower priority. Have the
+        Timer3 service routine increment a different global counter,
+        clear the Timer 3 interrupt flag and exit. Build, program and
+        debug your code and verify that both interrupts are being
+        entered by watching both counters and/or setting breakpoints in
+        the service routines.<br>
+        Note, to get the two timers to be in sync with each other we
+        could do something like<br>
+        <div style="margin-left: 40px;"><span style="font-family:
+            monospace;">TMR2 = 0;</span><br style="font-family:
+            monospace;">
+          <span style="font-family: monospace;">TMR3 =
+            3;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; //
+            Needed to get TMR2 and 3 in sync</span><br style="font-family: monospace;">
+          <span style="font-family: monospace;">T2CONSET = 0x8000; //
+            Turn Timer 2 on then</span> <span style="font-family:
+            monospace;">Turn Timer 3 on.</span><br style="font-family:
+            monospace;">
+          <span style="font-family: monospace;">T3CONSET = 0x8000; // Do
+            not rearrange these lines so timers will sync </span><br>
+        </div>
+        Where setting TMR3 to 3 initially compensates for the fact that
+        Timer 2 is turned on 3 machine instructions before timer 3 is
+        turned on (check the disassembly to see that this is true). You
+        can temporarily put a breakpoint on a dummy statement inside the
+        while(1) loop and then check that the two timers have the same
+        value to verify that they are in sync (have the same value) for
+        a number of runs to this breakpoint. Note that after the first
+        timer hits its period value that the two timers will no longer
+        have the same value.<br>
+        <br>
+        14) In what order do you expect the service routines to be
+        entered (for the first 8 times)? Record your prediction, Reset.
+        <span style="color: rgb(255, 0, 0);"><span style="font-weight:
+            bold;">Clear all other breakpoints, then set breakpoints on
+            the first C instruction in each service routine</span></span>
+        and Run. <span style="font-weight: bold;">Demonstrate this to
+          the professor</span>. <span style="color: rgb(255, 0, 0);"></span>Record
+        the order that the breakpoints were actually triggered.
+        Since&nbsp; T3 interrupts at count 1000 and T2 interrupts at
+        count 1024 (the second time it is triggered), why does it appear
+        that T2 was entered before T3 in this case? Adding breakpoints
+        to the opening curly braces of each service routine should help
+        you understand what is going on.<br>
+        <br>
+        15) Add an infinite delay (while(1); loop) to the Timer 3
+        service routine. Set breakpoints in both service routines.
+        Verify that the Timer 3 service routine is entered only once,
+        but that the Timer 2 service routine is entered multiple times
+        indicating that the higher priority Timer 2 routine is nesting
+        inside the Timer 3 routine <span style="font-weight: bold;">even
+
+
+
+
+
+
+
+
+
+          though the Timer 3 service routine does not have an ei
+          instruction</span> in it.<br>
+        <br>
+        16) Move the infinite delay to the Timer 2 service routine and
+        verify that the Timer 3 service routine is not entered.<br>
+        <br>
+        17) Remove the infinite delay from the Timer 2 service routine,
+        make Timer 3 have higher priority than Timer 2 (but not priority
+        7) and add a delay of 40 counts to the Timer 3 service routine.
+        To do this you can simply wait until Timer 3 &gt; 40 in the
+        service routine itself. (Don't clear Timer 3 or otherwise adjust
+        its value!). Build, program and debug, making sure both routines
+        are still being entered. Set a breakpoint on the first C
+        instruction in the Timer 2 service routine and clear all other
+        breakpoints. Run, and record the latency on entry to the Timer2
+        service routine for the first 10 times it is entered. Show your
+        results to the professor. Report your results and explain, as
+        best you can, <span style="text-decoration: underline;">all</span>
+        of the variations in the latency in your report. In particular
+        -- <br>
+        <div style="margin-left: 40px;">a) Why are the second and 4th
+          latencies significantly longer than the other latencies?<br>
+          b) Why is the difference in the latency between the second and
+          fourth latencies very close to 24?<br>
+          c) Why is there a roughly 4 cycle variation in the 5th and
+          subsequent latencies?<br>
+        </div>
+        <br>
+        18)<span style="color: rgb(255, 0, 0);"> </span>Make Timer 3
+        have lower priority than Timer 2, but leave the delay in the
+        Timer 3 routine.&nbsp; Will the Timer 2 service nest inside
+        Timer 3 service? Can you determine a way to show that this is in
+        fact happening? Demonstrate it to the professor and record your
+        method for your report. <span style="font-weight: bold;">Keep a
+          copy of your code at this point for your report.</span><br>
+        <br>
+        19) Change the interrupt mode to <span style="font-weight:
+          bold;">single vector</span> and merge the two service routines
+        into a single service routine that provides the same
+        functionality as the original two service routines. Do not
+        change the actual priority of the two timer interrupts, but set
+        the IPL specifier to <span style="font-weight: bold;">RIPL</span>.
+        Remember that in single vector mode, the EIC assigns vector 0 to
+        all interrupts regardless of their priority or original vector
+        number. Build program and debug, and verify that both timers are
+        being serviced and that the interrupts are in fact nesting.
+        Demonstrate this to the professor. <span style="font-weight:
+          bold;">Keep a copy of your code at this point for your report.</span><br>
+        <span style="color: rgb(255, 0, 0);"></span>
+        <ul>
+          <li>Why was it necessary to set the IPL specifier to RIPL? <br>
+          </li>
+        </ul>
+        Note that the compiler also supports the IPL specifier "single",
+        but this will generate the same prolog and epilog as the RIPL
+        specifier generates. Also, if no IPL specifier is given, the
+        default behavior is the same as RIPL.<br>
+        <br>
+        <span style="font-weight: bold;">Note:</span> Since we know that
+        Timer 2 service can nest inside Timer 3 service, the single
+        service routine needs to be "<span style="text-decoration:
+          underline;">re-entrant</span>". Code can be re-entrant if:<br>
+        <div style="margin-left: 40px;">a) It never modifies itself.
+          That is, the instructions of the program are never changed.
+          Ordinarily this is the case. Usually, the only time this comes
+          up is if code is in modifiable memory (i.e. RAM) and the code
+          accidentally overwrites itself (array or buffer overrun etc.).<br>
+          b) Any variables changed by the routine must be allocated to a
+          particular "instance" (i.e. nesting) of the routine's
+          invocation. Thus, if a service routine is invoked for more
+          than one interrupt, then the service routines variables must
+          be unique to each instance of the service routine.</div>
+        <ol style="list-style-type: lower-alpha;">
+        </ol>
+        <ul>
+          <li>What is it about local variables and register usage that
+            makes C interrupt service routines generally re-entrant? </li>
+        </ul>
+        Consider the following code fragment:<br>
+        <div style="margin-left: 40px;">void serviceTimers(void) {<br>
+          <div style="margin-left: 40px;"><span style="font-weight:
+              bold;">static </span>int var;<br>
+            &nbsp;var = IFS0.T2IF<br>
+            if(var) {<br>
+            <div style="margin-left: 40px;">//service Timer2 Interrupt<br>
+            </div>
+            } else {<br>
+            <div style="margin-left: 40px;">//service Timer3 Interrupt<br>
+            </div>
+          </div>
+          <div style="margin-left: 40px;">}<br>
+          </div>
+          }<br>
+          <br>
+        </div>
+        <ul>
+          <li>Describe how things can go wrong if the service routine is
+            interrupted just after var is assigned the value of
+            IFS0.T2IF.</li>
+        </ul>
+        Put your answers to these questions in your report.<br>
+        <br>
+        <span style="font-weight: bold;">REPORT<br>
+          <br>
+        </span>A formal report is not required. Include:<br>
+        <ul>
+          <li>A copy of your <span style="text-decoration: underline;">commented</span>
+            code for step 18</li>
+          <li>A copy of your <span style="text-decoration: underline;">commented</span>
+            code for step 19.</li>
+          <li>Answers to all questions and recorded data from steps 1,
+            2, 3, 6, 7, 8, 10, 11, 12, 14, 17, 18 and 19. <br>
+          </li>
+          <li>Also, E-mail a copy of your step 18 and 19 source code to
+            the professor.</li>
+        </ul>
+      </div>
+      <br>
+    </div>
+  
+
+</body></html>
